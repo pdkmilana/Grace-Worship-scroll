@@ -1800,3 +1800,21 @@ body[data-page="program"] .speed-more-button {
 .song-speed-select:focus {
   border-color: var(--accent);
 }
+
+
+/* =========================================================
+   v9.2 — keep viewer content below the fixed control panel
+   ========================================================= */
+body[data-page="program"] {
+  scroll-padding-top: calc(var(--viewer-header-height, 148px) + 16px);
+}
+
+body[data-page="program"] .program-page {
+  padding-top: calc(var(--viewer-header-height, 148px) + 16px);
+}
+
+@media (max-width: 760px) {
+  body[data-page="program"] .program-page {
+    padding-top: calc(var(--viewer-header-height, 260px) + 14px);
+  }
+}

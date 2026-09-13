@@ -59,6 +59,7 @@ document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
   cacheElements();
+  syncViewerLayout();
   applyTheme();
   bindCommonEvents();
 
@@ -207,8 +208,7 @@ async function initHome() {
 async function loadPrograms() {
   const { data, error } = await supabaseClient
     .from("programs")
-    .select("id, title, service_date, created_at, updated_at")
-    .order("service_date", { ascending: false, nullsFirst: false })
+    .select("id, title, created_at, updated_at")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -235,8 +235,6 @@ function renderPrograms() {
   els.noPrograms?.classList.add("hidden");
 
   els.programList.innerHTML = programs.map((program, index) => {
-    const dateText = formatDate(program.service_date);
-
     return `
       <article class="program-card">
         <div class="program-card-main">
@@ -244,7 +242,6 @@ function renderPrograms() {
 
           <div>
             <h3>${escapeHtml(program.title || "Без названия")}</h3>
-            <p>${dateText || "Дата не указана"}</p>
           </div>
         </div>
 
@@ -289,7 +286,7 @@ async function createProgram() {
 
   const title = window.prompt(
     "Название программы",
-    "Восхваление " + formatDate(new Date().toISOString().slice(0, 10))
+    "Восхваление"
   );
 
   if (!title?.trim()) return;
@@ -297,8 +294,7 @@ async function createProgram() {
   const { data, error } = await supabaseClient
     .from("programs")
     .insert({
-      title: title.trim(),
-      service_date: new Date().toISOString().slice(0, 10)
+      title: title.trim()
     })
     .select()
     .single();
@@ -361,7 +357,7 @@ async function initEditPage() {
 async function loadProgram(programId) {
   const { data: program, error: programError } = await supabaseClient
     .from("programs")
-    .select("id, title, service_date, created_at, updated_at")
+    .select("id, title, created_at, updated_at")
     .eq("id", programId)
     .single();
 
@@ -382,16 +378,12 @@ async function loadProgram(programId) {
     els.programTitle.textContent = program.title || "Без названия";
   }
 
-  if (els.programInfo) {
-    els.programInfo.textContent = formatDate(program.service_date) || "Дата не указана";
-  }
-
   if (els.editProgramTitle) {
     els.editProgramTitle.textContent = program.title || "Без названия";
   }
 
   if (els.editProgramInfo) {
-    els.editProgramInfo.textContent = formatDate(program.service_date) || "Дата не указана";
+    els.editProgramInfo.textContent = "Изменения сохраняются в программе.";
   }
 
   if (els.openProgramButton) {
@@ -404,10 +396,6 @@ async function loadProgram(programId) {
 
   if (els.programNameInput) {
     els.programNameInput.value = program.title || "";
-  }
-
-  if (els.programDateInput) {
-    els.programDateInput.value = program.service_date || "";
   }
 
   await loadProgramSongs(program.id);
@@ -494,10 +482,6 @@ function renderEditors() {
 
   if (els.programNameInput) {
     els.programNameInput.value = currentProgram.title || "";
-  }
-
-  if (els.programDateInput) {
-    els.programDateInput.value = currentProgram.service_date || "";
   }
 
   if (!els.songEditors) return;
@@ -598,13 +582,10 @@ async function saveProgram() {
     return;
   }
 
-  const serviceDate = els.programDateInput.value || null;
-
   const { data, error } = await supabaseClient
     .from("programs")
     .update({
       title,
-      service_date: serviceDate,
       updated_at: new Date().toISOString()
     })
     .eq("id", currentProgram.id)
@@ -621,9 +602,8 @@ async function saveProgram() {
 
   document.title = `${data.title} — GRACE WORSHIP`;
   if (els.programTitle) els.programTitle.textContent = data.title;
-  if (els.programInfo) els.programInfo.textContent = formatDate(data.service_date) || "Дата не указана";
   if (els.editProgramTitle) els.editProgramTitle.textContent = data.title;
-  if (els.editProgramInfo) els.editProgramInfo.textContent = formatDate(data.service_date) || "Дата не указана";
+  if (els.editProgramInfo) els.editProgramInfo.textContent = "Изменения сохраняются в программе.";
 
   showToast("Программа сохранена.");
 }
@@ -954,7 +934,19 @@ function getScrollContainer() {
 
 function getViewerHeaderOffset() {
   const header = document.querySelector(".control-panel");
-  return (header?.getBoundingClientRect().height || 0) + 10;
+  const height = header?.getBoundingClientRect().height || 0;
+  if (pageType === "program") {
+    document.documentElement.style.setProperty("--viewer-header-height", `${height}px`);
+  }
+  return height + 10;
+}
+
+function syncViewerLayout() {
+  if (pageType !== "program") return;
+  const header = document.querySelector(".control-panel");
+  if (!header) return;
+  const height = header.getBoundingClientRect().height || 0;
+  document.documentElement.style.setProperty("--viewer-header-height", `${height}px`);
 }
 
 function detectCurrentSong() {
@@ -1736,6 +1728,7 @@ function updateUI(renderFont = true) {
 
 window.addEventListener("resize", () => {
   if (pageType === "program") {
+    syncViewerLayout();
     createEndSpacer();
     updateFontSize();
   }

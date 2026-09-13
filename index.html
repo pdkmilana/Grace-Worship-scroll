@@ -3,546 +3,88 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>GRACE WORSHIP — SCROLL</title>
-
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
+<body data-page="home">
 
-<body>
-
-  <!-- =========================
-       ВЕРХНЯЯ ПАНЕЛЬ
-       ========================= -->
-
-  <header class="control-panel">
-
+  <header class="simple-header">
     <div class="top-row">
-
-      <div class="brand">
-
-        <div class="brand-name">
-          GRACE WORSHIP
-        </div>
-
-        <div
-          class="brand-subtitle"
-          style="color: var(--accent);"
-        >
-          SCROLL
-        </div>
-
-      </div>
-
+      <a class="brand brand-link" href="index.html">
+        <div class="brand-name">GRACE WORSHIP</div>
+        <div class="brand-subtitle">SCROLL</div>
+      </a>
 
       <div class="top-right">
-
-        <button
-          id="themeToggle"
-          class="theme-toggle"
-          title="Переключить тему"
-          aria-label="Переключить тему"
-        >
-          🌙
-        </button>
-
-
-        <button
-          id="authButton"
-          class="secondary-button"
-        >
-          Войти
-        </button>
-
-
-        <button
-          id="logoutButton"
-          class="secondary-button hidden"
-        >
-          Выйти
-        </button>
-
+        <button id="themeToggle" class="theme-toggle" title="Переключить тему" aria-label="Переключить тему">🌙</button>
+        <button id="authButton" class="secondary-button">Войти</button>
+        <button id="logoutButton" class="secondary-button hidden">Выйти</button>
       </div>
-
     </div>
-
-
-    <div class="controls-row">
-
-      <!-- Размер -->
-
-      <div class="control-group">
-
-        <span class="control-label">
-          Размер
-        </span>
-
-        <div class="control-buttons">
-
-          <button
-            id="fontMinus"
-            class="small-button"
-          >
-            A−
-          </button>
-
-          <span
-            id="fontSizeValue"
-            class="value-display"
-          >
-            22 px
-          </span>
-
-          <button
-            id="fontPlus"
-            class="small-button"
-          >
-            A+
-          </button>
-
-        </div>
-
-      </div>
-
-
-      <!-- Скорость -->
-
-      <div class="control-group">
-
-        <span class="control-label">
-          Скорость
-        </span>
-
-        <div class="control-buttons">
-
-          <button
-            id="speedMinus"
-            class="small-button"
-          >
-            −
-          </button>
-
-          <span
-            id="globalSpeedValue"
-            class="value-display"
-          >
-            18
-          </span>
-
-          <button
-            id="speedPlus"
-            class="small-button"
-          >
-            +
-          </button>
-
-          <button
-            id="applySpeedAll"
-            class="secondary-button compact"
-          >
-            Применить ко всем
-          </button>
-
-        </div>
-
-      </div>
-
-
-      <!-- Управление -->
-
-      <div class="control-group playback">
-
-        <button
-          id="playButton"
-          class="primary-button"
-        >
-          &#x25B6;&#xFE0E; Начать
-        </button>
-
-        <button
-          id="pauseButton"
-          class="secondary-button"
-        >
-          &#x23F8;&#xFE0E; Пауза
-        </button>
-
-        <button
-          id="resetButton"
-          class="secondary-button"
-        >
-          ↺ Сначала
-        </button>
-
-      </div>
-
-    </div>
-
   </header>
 
-
-  <!-- =========================
-       ОСНОВНОЙ КОНТЕНТ
-       ========================= -->
-
-  <main class="page">
-
-
-    <!-- Заголовок программы -->
-
-    <section class="intro-card">
-
-      <div>
-
-        <div class="eyebrow">
-          GRACE WORSHIP
-        </div>
-
-        <h1 id="programTitle">
-          Выберите программу
-        </h1>
-
-        <p id="programInfo">
-          Создайте программу служения
-        </p>
-
-      </div>
-
-
-      <div class="connection-badge">
-
-        <span class="status-dot"></span>
-
-        <span id="databaseStatus">
-          Supabase
-        </span>
-
-      </div>
-
+  <main class="page home-page">
+    <section class="home-hero">
+      <div class="eyebrow">WORSHIP SET</div>
+      <h1>Программы служения</h1>
+      <p>Выберите программу, чтобы открыть песни и аккорды.</p>
     </section>
 
-
-    <!-- =========================
-         СПИСОК ПРОГРАММ
-         ========================= -->
-
-    <section
-      id="programListSection"
-      class="program-list-section"
-    >
-
-      <div class="section-heading">
-
+    <section class="programs-section">
+      <div class="section-head">
         <div>
-
-          <div class="eyebrow">
-            PROGRAMS
-          </div>
-
+          <div class="section-kicker">PROGRAMS</div>
+          <h2>Сохранённые программы</h2>
         </div>
 
-
-        <button
-          id="createProgramButton"
-          class="primary-button hidden"
-        >
-          ＋ Новая программа
+        <button id="createProgramButton" class="primary-button hidden">
+          ＋ Новое служение
         </button>
-
       </div>
 
+      <div id="programList" class="program-list"></div>
 
-      <div
-        id="programList"
-        class="program-list"
-      ></div>
-
-
-      <div
-        id="noPrograms"
-        class="empty-state hidden"
-      >
-
-        <h2>
-          Пока нет программ
-        </h2>
-
-        <p>
-          Войдите, чтобы создать.
-        </p>
-
+      <div id="noPrograms" class="empty-state hidden">
+        <h2>Программ пока нет</h2>
+        <p>Войдите, чтобы создать первую программу служения.</p>
       </div>
-
     </section>
-
-
-    <!-- =========================
-         НАВИГАЦИЯ ПЕСЕН
-         ========================= -->
-
-    <div
-      id="songNavigation"
-      class="song-navigation hidden"
-    >
-
-      <button
-        id="prevSongButton"
-        class="nav-button"
-        title="Предыдущая песня"
-      >
-        ↑
-      </button>
-
-
-      <div
-        id="songCounter"
-        class="song-counter"
-      >
-        00 / 00
-      </div>
-
-
-      <button
-        id="nextSongButton"
-        class="nav-button"
-        title="Следующая песня"
-      >
-        ↓
-      </button>
-
-    </div>
-
-
-    <!-- =========================
-         ПРОГРАММА / ПЕСНИ
-         ========================= -->
-
-    <section
-      id="program"
-    ></section>
-
-
-    <!-- =========================
-         РЕДАКТОР
-         ========================= -->
-
-    <section
-      id="programEditor"
-      class="program-editor hidden"
-    >
-
-      <div class="section-heading">
-
-        <div>
-
-          <div class="eyebrow">
-            EDIT PROGRAM
-          </div>
-
-          <h2>
-            Настройка служения
-          </h2>
-
-        </div>
-
-      </div>
-
-
-      <div class="program-editor-card">
-
-        <div class="editor-field">
-
-          <label for="programNameInput">
-            Название служения
-          </label>
-
-          <input
-            id="programNameInput"
-            class="editor-input"
-            type="text"
-            placeholder="Например: Восхваление 13.09"
-          >
-
-        </div>
-
-
-        <div class="editor-field">
-
-          <label for="programDateInput">
-            Дата
-          </label>
-
-          <input
-            id="programDateInput"
-            class="editor-input"
-            type="date"
-          >
-
-        </div>
-
-
-        <div class="program-editor-actions">
-
-          <button
-            id="saveProgramButton"
-            class="primary-button"
-          >
-            Сохранить программу
-          </button>
-
-          <button
-            id="deleteProgramButton"
-            class="delete-button"
-          >
-            Удалить программу
-          </button>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- =========================
-         ДОБАВЛЕНИЕ ПЕСЕН
-         ========================= -->
-
-    <button
-      id="addSongButton"
-      class="add-song-button hidden"
-    >
-      ＋ Добавить песню
-    </button>
-
-
-    <section
-      id="songEditors"
-      class="song-editors"
-    ></section>
-
-
   </main>
 
+  <div id="authModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-auth></div>
 
-  <!-- =========================
-       AUTH MODAL
-       ========================= -->
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <button id="closeAuthButton" class="modal-close" aria-label="Закрыть">×</button>
 
-  <div
-    id="authModal"
-    class="modal hidden"
-    aria-hidden="true"
-  >
-
-    <div
-      class="modal-backdrop"
-      data-close-auth
-    ></div>
-
-
-    <div
-      class="modal-card"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="authTitle"
-    >
-
-      <button
-        id="closeAuthButton"
-        class="modal-close"
-        aria-label="Закрыть"
-      >
-        ×
-      </button>
-
-
-      <div class="eyebrow">
-        GRACE WORSHIP
-      </div>
-
-
-      <h2 id="authTitle">
-        Войти
-      </h2>
-
-
+      <div class="eyebrow">ACCOUNT</div>
+      <h2 id="authTitle">Вход</h2>
       <p class="modal-description">
         Войдите, чтобы создавать и редактировать программы служений.
       </p>
 
-
       <label>
-
         Email
-
-        <input
-          id="authEmail"
-          type="email"
-          autocomplete="email"
-          placeholder="you@example.com"
-        >
-
+        <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com">
       </label>
-
 
       <label>
-
         Пароль
-
-        <input
-          id="authPassword"
-          type="password"
-          autocomplete="current-password"
-          placeholder="Пароль"
-        >
-
+        <input id="authPassword" type="password" autocomplete="current-password" placeholder="Минимум 6 символов">
       </label>
-
 
       <div class="auth-actions">
-
-        <button
-          id="loginButton"
-          class="primary-button"
-        >
-          Войти
-        </button>
-
-
-        <button
-          id="signupButton"
-          class="secondary-button"
-        >
-          Регистрация
-        </button>
-
+        <button id="loginButton" class="primary-button">Войти</button>
+        <button id="signupButton" class="secondary-button">Регистрация</button>
       </div>
 
-
-      <p
-        id="authMessage"
-        class="auth-message"
-      ></p>
-
+      <p id="authMessage" class="auth-message"></p>
     </div>
-
   </div>
 
-
-  <!-- Уведомления -->
-
-  <div
-    id="toast"
-    class="toast"
-    aria-live="polite"
-  ></div>
-
-
-  <!-- Supabase -->
+  <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <script src="script.js"></script>
-
+  <script src="script.js?v=3"></script>
 </body>
 </html>

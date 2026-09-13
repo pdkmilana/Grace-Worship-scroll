@@ -1,3641 +1,1437 @@
-/* ==================================================
+/* =========================================================
    GRACE WORSHIP — SCROLL
-   PROGRAMS + SUPABASE
-   ================================================== */
+   Two-page version: programs + program viewer
+   ========================================================= */
 
-
-/* =========================
-   SUPABASE
-   ========================= */
-
-const SUPABASE_URL =
-  "https://ylcnkauqewvjvocbmweh.supabase.co";
-
-const SUPABASE_PUBLISHABLE_KEY =
-  "sb_publishable_KIhYKuei7TMvbKf0JGzwOA_JPpLb7lP";
-
-const supabaseClient =
-  window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_PUBLISHABLE_KEY
-  );
-
-
-/* =========================
-   SETTINGS
-   ========================= */
+const SUPABASE_URL = "https://ylcnkauqewvjvocbmweh.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_KIhYKuei7TMvbKf0JGzwOA_JPpLb7lP";
 
 const MIN_SPEED = 1;
 const MAX_SPEED = 100;
-
 const DEFAULT_SPEED = 18;
 
 const MIN_FONT_SIZE = 14;
 const MAX_FONT_SIZE = 60;
 
 const SWITCH_LINE = 140;
-
 const END_PADDING_RATIO = 1;
 
-const FONT_STORAGE_KEY =
-  "worship-scroll-font-size";
+const FONT_STORAGE_KEY = "worship-scroll-font-size";
+const THEME_STORAGE_KEY = "worship-scroll-theme";
 
-const THEME_STORAGE_KEY =
-  "worship-scroll-theme";
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
 
-
-/* =========================
-   STATE
-   ========================= */
+const pageType = document.body.dataset.page;
 
 let programs = [];
-
 let currentProgram = null;
-
 let songs = [];
 
 let currentSongIndex = 0;
-
-let globalSpeed =
-  DEFAULT_SPEED;
-
-let fontSize =
-  Number(
-    localStorage.getItem(
-      FONT_STORAGE_KEY
-    )
-  ) || 22;
-
-let currentUser = null;
+let globalSpeed = DEFAULT_SPEED;
+let fontSize = Number(localStorage.getItem(FONT_STORAGE_KEY)) || 22;
 
 let isPlaying = false;
-
 let animationFrameId = null;
-
 let lastTimestamp = null;
 
+let currentUser = null;
 let toastTimer = null;
-
-
-/* =========================
-   ELEMENTS
-   ========================= */
 
 const els = {};
 
-
-document.addEventListener(
-  "DOMContentLoaded",
-  init
-);
-
-
-/* ==================================================
-   INIT
-   ================================================== */
+document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
-
   cacheElements();
-
   applyTheme();
+  bindCommonEvents();
 
-  bindEvents();
+  if (pageType === "home") {
+    await initHome();
+  }
 
-  updateFontSize();
-
-  await checkSession();
-
-  await loadPrograms();
-
-  await loadProgramFromUrl();
-
-  updateUI();
+  if (pageType === "program") {
+    await initProgramPage();
+  }
 }
 
-
-/* =========================
-   CACHE ELEMENTS
-   ========================= */
+/* =========================================================
+   Elements
+   ========================================================= */
 
 function cacheElements() {
+  const ids = [
+    "themeToggle",
+    "authButton",
+    "logoutButton",
+    "authModal",
+    "closeAuthButton",
+    "authEmail",
+    "authPassword",
+    "loginButton",
+    "signupButton",
+    "authMessage",
+    "toast",
 
-  els.themeToggle =
-    document.getElementById(
-      "themeToggle"
-    );
+    "programList",
+    "noPrograms",
+    "createProgramButton",
 
-  els.authButton =
-    document.getElementById(
-      "authButton"
-    );
+    "programTitle",
+    "programInfo",
+    "copyProgramLinkButton",
 
-  els.logoutButton =
-    document.getElementById(
-      "logoutButton"
-    );
+    "fontMinus",
+    "fontPlus",
+    "fontSizeValue",
+    "speedMinus",
+    "speedPlus",
+    "globalSpeedValue",
+    "applySpeedAll",
+    "playButton",
+    "pauseButton",
+    "resetButton",
 
+    "songNavigation",
+    "prevSongButton",
+    "nextSongButton",
+    "songCounter",
+    "program",
+    "emptyState",
 
-  els.fontMinus =
-    document.getElementById(
-      "fontMinus"
-    );
+    "editorSection",
+    "editorDetails",
+    "programNameInput",
+    "programDateInput",
+    "saveProgramButton",
+    "deleteProgramButton",
+    "addSongButton",
+    "songEditors"
+  ];
 
-  els.fontPlus =
-    document.getElementById(
-      "fontPlus"
-    );
-
-  els.fontSizeValue =
-    document.getElementById(
-      "fontSizeValue"
-    );
-
-
-  els.speedMinus =
-    document.getElementById(
-      "speedMinus"
-    );
-
-  els.speedPlus =
-    document.getElementById(
-      "speedPlus"
-    );
-
-  els.globalSpeedValue =
-    document.getElementById(
-      "globalSpeedValue"
-    );
-
-  els.applySpeedAll =
-    document.getElementById(
-      "applySpeedAll"
-    );
-
-
-  els.playButton =
-    document.getElementById(
-      "playButton"
-    );
-
-  els.pauseButton =
-    document.getElementById(
-      "pauseButton"
-    );
-
-  els.resetButton =
-    document.getElementById(
-      "resetButton"
-    );
-
-
-  els.programTitle =
-    document.getElementById(
-      "programTitle"
-    );
-
-  els.programInfo =
-    document.getElementById(
-      "programInfo"
-    );
-
-
-  els.programListSection =
-    document.getElementById(
-      "programListSection"
-    );
-
-  els.programList =
-    document.getElementById(
-      "programList"
-    );
-
-  els.noPrograms =
-    document.getElementById(
-      "noPrograms"
-    );
-
-  els.createProgramButton =
-    document.getElementById(
-      "createProgramButton"
-    );
-
-
-  els.program =
-    document.getElementById(
-      "program"
-    );
-
-
-  els.songNavigation =
-    document.getElementById(
-      "songNavigation"
-    );
-
-  els.prevSongButton =
-    document.getElementById(
-      "prevSongButton"
-    );
-
-  els.nextSongButton =
-    document.getElementById(
-      "nextSongButton"
-    );
-
-  els.songCounter =
-    document.getElementById(
-      "songCounter"
-    );
-
-
-  els.programEditor =
-    document.getElementById(
-      "programEditor"
-    );
-
-  els.programNameInput =
-    document.getElementById(
-      "programNameInput"
-    );
-
-  els.programDateInput =
-    document.getElementById(
-      "programDateInput"
-    );
-
-  els.saveProgramButton =
-    document.getElementById(
-      "saveProgramButton"
-    );
-
-  els.deleteProgramButton =
-    document.getElementById(
-      "deleteProgramButton"
-    );
-
-
-  els.addSongButton =
-    document.getElementById(
-      "addSongButton"
-    );
-
-  els.songEditors =
-    document.getElementById(
-      "songEditors"
-    );
-
-
-  els.authModal =
-    document.getElementById(
-      "authModal"
-    );
-
-  els.closeAuthButton =
-    document.getElementById(
-      "closeAuthButton"
-    );
-
-  els.authEmail =
-    document.getElementById(
-      "authEmail"
-    );
-
-  els.authPassword =
-    document.getElementById(
-      "authPassword"
-    );
-
-  els.loginButton =
-    document.getElementById(
-      "loginButton"
-    );
-
-  els.signupButton =
-    document.getElementById(
-      "signupButton"
-    );
-
-  els.authMessage =
-    document.getElementById(
-      "authMessage"
-    );
-
-
-  els.databaseStatus =
-    document.getElementById(
-      "databaseStatus"
-    );
-
-  els.toast =
-    document.getElementById(
-      "toast"
-    );
+  ids.forEach(id => {
+    els[id] = document.getElementById(id);
+  });
 }
 
+/* =========================================================
+   Common events
+   ========================================================= */
 
-/* ==================================================
-   EVENTS
-   ================================================== */
+function bindCommonEvents() {
+  els.themeToggle?.addEventListener("click", toggleTheme);
 
-function bindEvents() {
+  els.authButton?.addEventListener("click", openAuthModal);
+  els.logoutButton?.addEventListener("click", logout);
 
-  els.themeToggle.addEventListener(
-    "click",
-    toggleTheme
-  );
+  els.closeAuthButton?.addEventListener("click", closeAuthModal);
+  document.querySelector("[data-close-auth]")?.addEventListener("click", closeAuthModal);
 
+  els.loginButton?.addEventListener("click", login);
+  els.signupButton?.addEventListener("click", signup);
 
-  els.fontMinus.addEventListener(
-    "click",
-    () =>
-      changeFontSize(-1)
-  );
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    currentUser = session?.user || null;
+    updateAccountUI();
 
-  els.fontPlus.addEventListener(
-    "click",
-    () =>
-      changeFontSize(1)
-  );
-
-
-  els.speedMinus.addEventListener(
-    "click",
-    () =>
-      changeGlobalSpeed(-1)
-  );
-
-  els.speedPlus.addEventListener(
-    "click",
-    () =>
-      changeGlobalSpeed(1)
-  );
-
-  els.applySpeedAll.addEventListener(
-    "click",
-    applySpeedToAll
-  );
-
-
-  els.playButton.addEventListener(
-    "click",
-    play
-  );
-
-  els.pauseButton.addEventListener(
-    "click",
-    pause
-  );
-
-  els.resetButton.addEventListener(
-    "click",
-    reset
-  );
-
-
-  els.prevSongButton.addEventListener(
-    "click",
-    () =>
-      goToSong(
-        currentSongIndex - 1
-      )
-  );
-
-  els.nextSongButton.addEventListener(
-    "click",
-    () =>
-      goToSong(
-        currentSongIndex + 1
-      )
-  );
-
-
-  els.createProgramButton.addEventListener(
-    "click",
-    createProgram
-  );
-
-
-  els.saveProgramButton.addEventListener(
-    "click",
-    saveProgram
-  );
-
-
-  els.deleteProgramButton.addEventListener(
-    "click",
-    deleteCurrentProgram
-  );
-
-
-  els.addSongButton.addEventListener(
-    "click",
-    addSong
-  );
-
-
-  els.authButton.addEventListener(
-    "click",
-    openAuthModal
-  );
-
-  els.logoutButton.addEventListener(
-    "click",
-    logout
-  );
-
-
-  els.closeAuthButton.addEventListener(
-    "click",
-    closeAuthModal
-  );
-
-
-  document
-    .querySelector(
-      "[data-close-auth]"
-    )
-    .addEventListener(
-      "click",
-      closeAuthModal
-    );
-
-
-  els.loginButton.addEventListener(
-    "click",
-    login
-  );
-
-  els.signupButton.addEventListener(
-    "click",
-    signup
-  );
-
-
-  document.addEventListener(
-    "keydown",
-    handleKeyboard
-  );
-
-
-  window.addEventListener(
-    "resize",
-    createEndSpacer
-  );
-
-
-  supabaseClient.auth.onAuthStateChange(
-    (_event, session) => {
-
-      currentUser =
-        session?.user || null;
-
-      updateUI();
-
-      renderProgramList();
-
-      renderEditors();
-
+    if (pageType === "home") {
+      renderPrograms();
     }
-  );
+
+    if (pageType === "program") {
+      renderEditors();
+    }
+  });
 }
 
+/* =========================================================
+   Home page
+   ========================================================= */
 
-/* ==================================================
-   AUTH
-   ================================================== */
-
-async function checkSession() {
-
-  setStatus(
-    "Подключение...",
-    "neutral"
-  );
-
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient.auth.getSession();
-
-
-  if (error) {
-
-    console.error(error);
-
-    setStatus(
-      "Ошибка подключения",
-      "error"
-    );
-
-    return;
-  }
-
-
-  currentUser =
-    data.session?.user || null;
-
-
-  setStatus(
-    "База подключена",
-    "online"
-  );
-}
-
-
-/* =========================
-   LOGIN
-   ========================= */
-
-async function login() {
-
-  const email =
-    els.authEmail.value.trim();
-
-  const password =
-    els.authPassword.value;
-
-
-  if (
-    !email ||
-    !password
-  ) {
-
-    els.authMessage.textContent =
-      "Введите email и пароль.";
-
-    return;
-  }
-
-
-  setAuthLoading(true);
-
-
-  els.authMessage.textContent =
-    "Выполняется вход...";
-
-
-  const {
-    error
-  } =
-    await supabaseClient.auth
-      .signInWithPassword({
-        email,
-        password
-      });
-
-
-  setAuthLoading(false);
-
-
-  if (error) {
-
-    console.error(error);
-
-    els.authMessage.textContent =
-      error.message;
-
-    return;
-  }
-
-
-  closeAuthModal();
-
-
-  showToast(
-    "Вы вошли в систему."
-  );
-
-
+async function initHome() {
+  await checkSession();
   await loadPrograms();
-
-  updateUI();
+  updateAccountUI();
 }
-
-
-/* =========================
-   SIGN UP
-   ========================= */
-
-async function signup() {
-
-  const email =
-    els.authEmail.value.trim();
-
-  const password =
-    els.authPassword.value;
-
-
-  if (
-    !email ||
-    !password
-  ) {
-
-    els.authMessage.textContent =
-      "Введите email и пароль.";
-
-    return;
-  }
-
-
-  if (
-    password.length < 6
-  ) {
-
-    els.authMessage.textContent =
-      "Пароль должен содержать минимум 6 символов.";
-
-    return;
-  }
-
-
-  setAuthLoading(true);
-
-
-  els.authMessage.textContent =
-    "Создание аккаунта...";
-
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient.auth
-      .signUp({
-        email,
-        password
-      });
-
-
-  setAuthLoading(false);
-
-
-  if (error) {
-
-    console.error(error);
-
-    els.authMessage.textContent =
-      error.message;
-
-    return;
-  }
-
-
-  if (data.session) {
-
-    closeAuthModal();
-
-    currentUser =
-      data.session.user;
-
-    showToast(
-      "Аккаунт создан."
-    );
-
-  } else {
-
-    els.authMessage.textContent =
-      "Аккаунт создан. Проверьте почту и подтвердите email.";
-
-  }
-}
-
-
-/* =========================
-   LOGOUT
-   ========================= */
-
-async function logout() {
-
-  pause();
-
-
-  const {
-    error
-  } =
-    await supabaseClient.auth.signOut();
-
-
-  if (error) {
-
-    showToast(
-      "Ошибка выхода: " +
-        error.message
-    );
-
-    return;
-  }
-
-
-  currentUser = null;
-
-  updateUI();
-
-  renderEditors();
-
-  showToast(
-    "Вы вышли."
-  );
-}
-
-
-/* =========================
-   AUTH MODAL
-   ========================= */
-
-function openAuthModal() {
-
-  els.authMessage.textContent =
-    "";
-
-  els.authModal.classList.remove(
-    "hidden"
-  );
-
-  els.authModal.setAttribute(
-    "aria-hidden",
-    "false"
-  );
-
-  setTimeout(
-    () =>
-      els.authEmail.focus(),
-    50
-  );
-}
-
-
-function closeAuthModal() {
-
-  els.authModal.classList.add(
-    "hidden"
-  );
-
-  els.authModal.setAttribute(
-    "aria-hidden",
-    "true"
-  );
-}
-
-
-function setAuthLoading(
-  loading
-) {
-
-  els.loginButton.disabled =
-    loading;
-
-  els.signupButton.disabled =
-    loading;
-}
-
-
-/* ==================================================
-   PROGRAMS
-   ================================================== */
 
 async function loadPrograms() {
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("programs")
-      .select(
-        "id, title, service_date, created_at, updated_at"
-      )
-      .order(
-        "service_date",
-        {
-          ascending: false,
-          nullsFirst: false
-        }
-      )
-      .order(
-        "created_at",
-        {
-          ascending: false
-        }
-      );
-
+  const { data, error } = await supabaseClient
+    .from("programs")
+    .select("id, title, service_date, created_at, updated_at")
+    .order("service_date", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
 
   if (error) {
-
     console.error(error);
-
-    setStatus(
-      "Ошибка базы",
-      "error"
-    );
-
-    showToast(
-      "Не удалось загрузить программы: " +
-        error.message
-    );
-
+    showToast("Не удалось загрузить программы: " + error.message);
     programs = [];
-
+    renderPrograms();
     return;
   }
 
-
-  programs =
-    data || [];
-
-
-  setStatus(
-    "База подключена",
-    "online"
-  );
-
-
-  renderProgramList();
+  programs = data || [];
+  renderPrograms();
 }
 
+function renderPrograms() {
+  if (!els.programList) return;
 
-/* =========================
-   URL PROGRAM
-   ========================= */
-
-async function loadProgramFromUrl() {
-
-  const params =
-    new URLSearchParams(
-      window.location.search
-    );
-
-
-  const programId =
-    params.get(
-      "program"
-    );
-
-
-  if (
-    programId
-  ) {
-
-    const program =
-      programs.find(
-        item =>
-          item.id ===
-          programId
-      );
-
-
-    if (program) {
-
-      await openProgram(
-        program.id,
-        false
-      );
-
-      return;
-    }
-
-
-    showToast(
-      "Программа не найдена."
-    );
-
+  if (!programs.length) {
+    els.programList.innerHTML = "";
+    els.noPrograms?.classList.remove("hidden");
     return;
   }
 
+  els.noPrograms?.classList.add("hidden");
 
-  if (
-    programs.length
-  ) {
+  els.programList.innerHTML = programs.map((program, index) => {
+    const dateText = formatDate(program.service_date);
 
-    await openProgram(
-      programs[0].id,
-      false
-    );
+    return `
+      <article class="program-card">
+        <div class="program-card-main">
+          <div class="program-card-number">${String(index + 1).padStart(2, "0")}</div>
 
-  } else {
+          <div>
+            <h3>${escapeHtml(program.title || "Без названия")}</h3>
+            <p>${dateText || "Дата не указана"}</p>
+          </div>
+        </div>
 
-    renderEmptyProgram();
+        <div class="program-card-actions">
+          <a
+            class="primary-button"
+            href="program.html?program=${encodeURIComponent(program.id)}"
+          >
+            Открыть
+          </a>
 
-  }
-}
+          <button
+            class="secondary-button copy-link-button"
+            data-program-id="${program.id}"
+            title="Скопировать ссылку"
+          >
+            Ссылка
+          </button>
+        </div>
+      </article>
+    `;
+  }).join("");
 
-
-/* =========================
-   OPEN PROGRAM
-   ========================= */
-
-async function openProgram(
-  programId,
-  updateUrl = true
-) {
-
-  const program =
-    programs.find(
-      item =>
-        item.id ===
-        programId
-    );
-
-
-  if (!program) {
-    return;
-  }
-
-
-  pause();
-
-
-  currentProgram =
-    program;
-
-
-  if (updateUrl) {
-
-    const url =
-      new URL(
-        window.location.href
-      );
-
-    url.searchParams.set(
-      "program",
-      program.id
-    );
-
-    window.history.pushState(
-      {},
-      "",
-      url
-    );
-  }
-
-
-  await loadSongsForProgram(
-    program.id
-  );
-
-
-  currentSongIndex =
-    0;
-
-
-  renderProgram();
-
-  renderEditors();
-
-  updateProgramHeader();
-
-  updateUI();
-
-
-  window.scrollTo({
-    top: 0,
-    behavior: "auto"
+  els.programList.querySelectorAll(".copy-link-button").forEach(button => {
+    button.addEventListener("click", () => copyProgramLink(button.dataset.programId));
   });
 }
-
-
-/* =========================
-   LOAD PROGRAM SONGS
-   ========================= */
-
-async function loadSongsForProgram(
-  programId
-) {
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("program_songs")
-      .select(
-        `
-        id,
-        position,
-        song_id,
-        songs (
-          id,
-          title,
-          text,
-          speed,
-          created_at,
-          updated_at
-        )
-        `
-      )
-      .eq(
-        "program_id",
-        programId
-      )
-      .order(
-        "position",
-        {
-          ascending: true
-        }
-      );
-
-
-  if (error) {
-
-    console.error(error);
-
-    showToast(
-      "Не удалось загрузить песни: " +
-        error.message
-    );
-
-    songs = [];
-
-    return;
-  }
-
-
-  songs =
-    (data || [])
-      .map(
-        item => {
-
-          const song =
-            item.songs;
-
-          if (!song) {
-            return null;
-          }
-
-          return {
-
-            id: song.id,
-
-            title:
-              song.title,
-
-            text:
-              song.text || "",
-
-            speed:
-              clamp(
-                Number(
-                  song.speed
-                ) ||
-                  DEFAULT_SPEED,
-
-                MIN_SPEED,
-
-                MAX_SPEED
-              ),
-
-            programSongId:
-              item.id,
-
-            position:
-              item.position
-
-          };
-
-        }
-      )
-      .filter(Boolean);
-
-
-  if (
-    songs.length
-  ) {
-
-    globalSpeed =
-      songs[0].speed;
-
-  }
-}
-
-
-/* ==================================================
-   CREATE PROGRAM
-   ================================================== */
 
 async function createProgram() {
-
   if (!currentUser) {
-
     openAuthModal();
-
     return;
   }
 
+  const title = window.prompt(
+    "Название программы",
+    "Восхваление " + formatDate(new Date().toISOString().slice(0, 10))
+  );
 
-  const title =
-    prompt(
-      "Название нового служения:",
-      "Восхваление"
-    );
+  if (!title?.trim()) return;
 
-
-  if (
-    !title ||
-    !title.trim()
-  ) {
-
-    return;
-  }
-
-
-  const {
-    data,
-    error
-  } =
-    await supabaseClient
-      .from("programs")
-      .insert({
-        title:
-          title.trim(),
-
-        service_date:
-          null
-      })
-      .select()
-      .single();
-
+  const { data, error } = await supabaseClient
+    .from("programs")
+    .insert({
+      title: title.trim(),
+      service_date: new Date().toISOString().slice(0, 10)
+    })
+    .select()
+    .single();
 
   if (error) {
-
     console.error(error);
-
-    showToast(
-      "Не удалось создать программу: " +
-        error.message
-    );
-
+    showToast("Не удалось создать программу: " + error.message);
     return;
   }
 
-
-  programs.unshift(
-    data
-  );
-
-
-  await openProgram(
-    data.id,
-    true
-  );
-
-
-  showToast(
-    "Программа создана."
-  );
+  window.location.href = `program.html?program=${encodeURIComponent(data.id)}`;
 }
 
+function copyProgramLink(programId) {
+  const url = new URL("program.html", window.location.href);
+  url.searchParams.set("program", programId);
 
-/* ==================================================
-   SAVE PROGRAM
-   ================================================== */
-
-async function saveProgram() {
-
-  if (
-    !currentUser ||
-    !currentProgram
-  ) {
-
-    return;
-  }
-
-
-  const title =
-    els.programNameInput.value.trim();
-
-  const date =
-    els.programDateInput.value ||
-    null;
-
-
-  if (!title) {
-
-    showToast(
-      "Введите название служения."
-    );
-
-    return;
-  }
-
-
-  const {
-    error
-  } =
-    await supabaseClient
-      .from("programs")
-      .update({
-
-        title:
-          title,
-
-        service_date:
-          date,
-
-        updated_at:
-          new Date().toISOString()
-
-      })
-      .eq(
-        "id",
-        currentProgram.id
-      );
-
-
-  if (error) {
-
-    console.error(error);
-
-    showToast(
-      "Не удалось сохранить программу: " +
-        error.message
-    );
-
-    return;
-  }
-
-
-  currentProgram.title =
-    title;
-
-  currentProgram.service_date =
-    date;
-
-
-  const index =
-    programs.findIndex(
-      item =>
-        item.id ===
-        currentProgram.id
-    );
-
-
-  if (
-    index !== -1
-  ) {
-
-    programs[index] =
-      currentProgram;
-
-  }
-
-
-  updateProgramHeader();
-
-  renderProgramList();
-
-  showToast(
-    "Программа сохранена."
-  );
+  navigator.clipboard.writeText(url.href)
+    .then(() => showToast("Ссылка скопирована."))
+    .catch(() => showToast("Не удалось скопировать ссылку."));
 }
 
+/* =========================================================
+   Program page
+   ========================================================= */
 
-/* ==================================================
-   DELETE PROGRAM
-   ================================================== */
+async function initProgramPage() {
+  await checkSession();
 
-async function deleteCurrentProgram() {
+  const programId = new URLSearchParams(window.location.search).get("program");
 
-  if (
-    !currentUser ||
-    !currentProgram
-  ) {
-
+  if (!programId) {
+    window.location.replace("index.html");
     return;
   }
 
-
-  const confirmed =
-    confirm(
-      `Удалить программу «${currentProgram.title}»?`
-    );
-
-
-  if (!confirmed) {
-    return;
-  }
-
-
-  const programId =
-    currentProgram.id;
-
-
-  const {
-    error
-  } =
-    await supabaseClient
-      .from("programs")
-      .delete()
-      .eq(
-        "id",
-        programId
-      );
-
-
-  if (error) {
-
-    console.error(error);
-
-    showToast(
-      "Не удалось удалить программу: " +
-        error.message
-    );
-
-    return;
-  }
-
-
-  programs =
-    programs.filter(
-      item =>
-        item.id !==
-        programId
-    );
-
-
-  currentProgram =
-    null;
-
-  songs = [];
-
-  pause();
-
-
-  const url =
-    new URL(
-      window.location.href
-    );
-
-  url.searchParams.delete(
-    "program"
-  );
-
-  window.history.pushState(
-    {},
-    "",
-    url
-  );
-
-
-  if (
-    programs.length
-  ) {
-
-    await openProgram(
-      programs[0].id,
-      true
-    );
-
-  } else {
-
-    renderEmptyProgram();
-
-  }
-
-
-  renderProgramList();
-
-  showToast(
-    "Программа удалена."
-  );
+  await loadProgram(programId);
+  updateAccountUI();
 }
 
+async function loadProgram(programId) {
+  const { data: program, error: programError } = await supabaseClient
+    .from("programs")
+    .select("id, title, service_date, created_at, updated_at")
+    .eq("id", programId)
+    .single();
 
-/* ==================================================
-   PROGRAM LIST
-   ================================================== */
-
-function renderProgramList() {
-
-  if (!els.programList) {
+  if (programError || !program) {
+    console.error(programError);
+    if (els.programTitle) els.programTitle.textContent = "Программа не найдена";
+    if (els.programInfo) els.programInfo.textContent = "Вернитесь к списку программ.";
+    els.program?.replaceChildren();
+    els.songNavigation?.classList.add("hidden");
     return;
   }
 
+  currentProgram = program;
 
-  if (
-    !programs.length
-  ) {
+  document.title = `${program.title} — GRACE WORSHIP`;
 
-    els.programList.innerHTML =
-      "";
-
-    els.noPrograms.classList.remove(
-      "hidden"
-    );
-
-    return;
+  if (els.programTitle) {
+    els.programTitle.textContent = program.title || "Без названия";
   }
 
+  if (els.programInfo) {
+    els.programInfo.textContent = formatDate(program.service_date) || "Дата не указана";
+  }
 
-  els.noPrograms.classList.add(
-    "hidden"
-  );
+  if (els.programNameInput) {
+    els.programNameInput.value = program.title || "";
+  }
 
+  if (els.programDateInput) {
+    els.programDateInput.value = program.service_date || "";
+  }
 
-  els.programList.innerHTML =
-    programs
-      .map(
-        program => {
-
-          const active =
-            currentProgram &&
-            currentProgram.id ===
-              program.id;
-
-
-          return `
-
-            <article
-              class="program-card ${
-                active
-                  ? "active"
-                  : ""
-              }"
-            >
-
-              <div
-                class="program-card-main"
-              >
-
-                <h3
-                  class="program-card-title"
-                >
-                  ${escapeHtml(
-                    program.title
-                  )}
-                </h3>
-
-
-                ${
-                  program.service_date
-                    ? `
-                      <div
-                        class="program-card-date"
-                      >
-                        ${formatDate(
-                          program.service_date
-                        )}
-                      </div>
-                    `
-                    : ""
-                }
-
-              </div>
-
-
-              <div
-                class="program-card-actions"
-              >
-
-                <button
-                  class="program-open-button"
-                  data-program-open="${
-                    program.id
-                  }"
-                >
-                  Открыть
-                </button>
-
-
-                <button
-                  class="program-copy-button"
-                  data-program-copy="${
-                    program.id
-                  }"
-                >
-                  Ссылка
-                </button>
-
-              </div>
-
-            </article>
-
-          `;
-
-        }
-      )
-      .join("");
-
-
-  els.programList
-    .querySelectorAll(
-      "[data-program-open]"
-    )
-    .forEach(
-      button => {
-
-        button.addEventListener(
-          "click",
-          () =>
-            openProgram(
-              button.dataset.programOpen,
-              true
-            )
-        );
-
-      }
-    );
-
-
-  els.programList
-    .querySelectorAll(
-      "[data-program-copy]"
-    )
-    .forEach(
-      button => {
-
-        button.addEventListener(
-          "click",
-          () =>
-            copyProgramLink(
-              button.dataset.programCopy
-            )
-        );
-
-      }
-    );
+  await loadProgramSongs(program.id);
+  renderProgram();
+  renderEditors();
+  updateUI();
 }
 
+async function loadProgramSongs(programId) {
+  const { data: relations, error: relationError } = await supabaseClient
+    .from("program_songs")
+    .select("id, song_id, position, created_at")
+    .eq("program_id", programId)
+    .order("position", { ascending: true });
 
-/* =========================
-   COPY PROGRAM LINK
-   ========================= */
-
-async function copyProgramLink(
-  programId
-) {
-
-  const url =
-    new URL(
-      window.location.href
-    );
-
-
-  url.searchParams.set(
-    "program",
-    programId
-  );
-
-
-  try {
-
-    await navigator.clipboard.writeText(
-      url.toString()
-    );
-
-    showToast(
-      "Ссылка скопирована."
-    );
-
-  } catch {
-
-    prompt(
-      "Скопируйте ссылку:",
-      url.toString()
-    );
-
-  }
-}
-
-
-/* ==================================================
-   SONG CRUD
-   ================================================== */
-
-async function addSong() {
-
-  if (
-    !currentUser ||
-    !currentProgram
-  ) {
-
-    openAuthModal();
-
+  if (relationError) {
+    console.error(relationError);
+    showToast("Не удалось загрузить песни: " + relationError.message);
+    songs = [];
     return;
   }
 
+  const ids = (relations || []).map(item => item.song_id);
 
-  const title =
-    `Новая песня ${
-      songs.length + 1
-    }`;
-
-
-  const {
-    data: song,
-    error
-  } =
-    await supabaseClient
-      .from("songs")
-      .insert({
-
-        title:
-          title,
-
-        text:
-          "",
-
-        speed:
-          globalSpeed
-
-      })
-      .select()
-      .single();
-
-
-  if (error) {
-
-    console.error(error);
-
-    showToast(
-      "Не удалось создать песню: " +
-        error.message
-    );
-
+  if (!ids.length) {
+    songs = [];
     return;
   }
 
+  const { data: songRows, error: songsError } = await supabaseClient
+    .from("songs")
+    .select("id, title, text, speed, created_at, updated_at")
+    .in("id", ids);
 
-  const position =
-    songs.length;
-
-
-  const {
-    data: relation,
-    error:
-      relationError
-  } =
-    await supabaseClient
-      .from("program_songs")
-      .insert({
-
-        program_id:
-          currentProgram.id,
-
-        song_id:
-          song.id,
-
-        position:
-          position
-
-      })
-      .select()
-      .single();
-
-
-  if (
-    relationError
-  ) {
-
-    console.error(
-      relationError
-    );
-
-
-    await supabaseClient
-      .from("songs")
-      .delete()
-      .eq(
-        "id",
-        song.id
-      );
-
-
-    showToast(
-      "Не удалось добавить песню в программу."
-    );
-
+  if (songsError) {
+    console.error(songsError);
+    showToast("Не удалось загрузить тексты: " + songsError.message);
+    songs = [];
     return;
   }
 
-
-  songs.push({
-
-    id:
+  const byId = new Map(
+    (songRows || []).map(song => [
       song.id,
-
-    title:
-      song.title,
-
-    text:
-      song.text || "",
-
-    speed:
-      Number(
-        song.speed
-      ) ||
-      DEFAULT_SPEED,
-
-    programSongId:
-      relation.id,
-
-    position:
-      position
-
-  });
-
-
-  renderProgram();
-
-  renderEditors();
-
-  updateUI();
-
-
-  showToast(
-    "Песня добавлена."
-  );
-}
-
-
-/* =========================
-   DELETE SONG
-   ========================= */
-
-async function deleteSong(
-  songId
-) {
-
-  if (
-    !currentUser ||
-    !currentProgram
-  ) {
-
-    return;
-  }
-
-
-  const song =
-    songs.find(
-      item =>
-        item.id ===
-        songId
-    );
-
-
-  if (!song) {
-    return;
-  }
-
-
-  if (
-    !confirm(
-      `Удалить песню «${song.title}» из этой программы?`
-    )
-  ) {
-
-    return;
-  }
-
-
-  const {
-    error:
-      relationError
-  } =
-    await supabaseClient
-      .from("program_songs")
-      .delete()
-      .eq(
-        "id",
-        song.programSongId
-      );
-
-
-  if (
-    relationError
-  ) {
-
-    console.error(
-      relationError
-    );
-
-    showToast(
-      "Не удалось удалить песню из программы."
-    );
-
-    return;
-  }
-
-
-  const {
-    error:
-      songError
-  } =
-    await supabaseClient
-      .from("songs")
-      .delete()
-      .eq(
-        "id",
-        songId
-      );
-
-
-  if (
-    songError
-  ) {
-
-    console.error(
-      songError
-    );
-
-    showToast(
-      "Песня убрана из программы, но не удалена из базы."
-    );
-
-  }
-
-
-  songs =
-    songs.filter(
-      item =>
-        item.id !==
-        songId
-    );
-
-
-  songs.forEach(
-    (
-      item,
-      index
-    ) => {
-
-      item.position =
-        index;
-
-    }
+      {
+        id: song.id,
+        title: song.title || "",
+        text: song.text || "",
+        speed: clamp(Number(song.speed) || DEFAULT_SPEED, MIN_SPEED, MAX_SPEED),
+        created_at: song.created_at,
+        updated_at: song.updated_at
+      }
+    ])
   );
 
+  songs = (relations || [])
+    .sort((a, b) => Number(a.position || 0) - Number(b.position || 0))
+    .map(relation => byId.get(relation.song_id))
+    .filter(Boolean);
 
-  await saveSongPositions();
-
-
-  currentSongIndex =
-    Math.min(
-      currentSongIndex,
-      Math.max(
-        0,
-        songs.length - 1
-      )
-    );
-
-
-  renderProgram();
-
-  renderEditors();
-
-  updateUI();
-
-
-  showToast(
-    "Песня удалена."
-  );
+  globalSpeed = songs[0]?.speed || DEFAULT_SPEED;
 }
 
-
-/* =========================
-   SAVE POSITIONS
-   ========================= */
-
-async function saveSongPositions() {
-
-  for (
-    const song of songs
-  ) {
-
-    await supabaseClient
-      .from("program_songs")
-      .update({
-        position:
-          song.position
-      })
-      .eq(
-        "id",
-        song.programSongId
-      );
-
-  }
-}
-
-
-/* ==================================================
-   SONG EDITOR
-   ================================================== */
+/* =========================================================
+   Program editor
+   ========================================================= */
 
 function renderEditors() {
+  if (pageType !== "program" || !els.editorSection) return;
 
-  if (
-    !currentUser ||
-    !currentProgram
-  ) {
-
-    els.songEditors.innerHTML =
-      "";
-
-    els.addSongButton.classList.add(
-      "hidden"
-    );
-
-    els.programEditor.classList.add(
-      "hidden"
-    );
-
+  if (!currentUser || !currentProgram) {
+    els.editorSection.classList.add("hidden");
     return;
   }
 
+  els.editorSection.classList.remove("hidden");
 
-  els.addSongButton.classList.remove(
-    "hidden"
-  );
-
-  els.programEditor.classList.remove(
-    "hidden"
-  );
-
-
-  els.programNameInput.value =
-    currentProgram.title ||
-    "";
-
-
-  els.programDateInput.value =
-    currentProgram.service_date ||
-    "";
-
-
-  els.songEditors.innerHTML =
-    songs
-      .map(
-        (
-          song,
-          index
-        ) => `
-
-          <article
-            class="editor-card"
-            data-editor-id="${
-              song.id
-            }"
-          >
-
-            <div
-              class="editor-head"
-            >
-
-              <h3>
-                Песня ${
-                  String(
-                    index + 1
-                  ).padStart(
-                    2,
-                    "0"
-                  )
-                }
-              </h3>
-
-
-              <button
-                class="delete-button"
-                data-action="delete-song"
-                data-id="${
-                  song.id
-                }"
-              >
-                Удалить
-              </button>
-
-            </div>
-
-
-            <div
-              class="editor-field"
-            >
-
-              <label>
-                Название
-              </label>
-
-
-              <input
-                class="editor-input"
-                data-field="title"
-                data-id="${
-                  song.id
-                }"
-                type="text"
-                value="${
-                  escapeAttribute(
-                    song.title
-                  )
-                }"
-                placeholder="Название песни"
-              >
-
-            </div>
-
-
-            <div
-              class="editor-field"
-            >
-
-              <label>
-                Текст и аккорды
-              </label>
-
-
-              <textarea
-                class="editor-textarea"
-                data-field="text"
-                data-id="${
-                  song.id
-                }"
-                placeholder="Вставьте текст прямо из Word / Notes..."
-              >${
-                escapeHtml(
-                  song.text
-                )
-              }</textarea>
-
-            </div>
-
-
-            <div
-              class="editor-footer"
-            >
-
-              <div
-                class="editor-speed"
-              >
-
-                <span>
-                  Скорость
-                </span>
-
-
-                <button
-                  class="small-button"
-                  data-action="speed-minus"
-                  data-id="${
-                    song.id
-                  }"
-                >
-                  −
-                </button>
-
-
-                <input
-                  class="speed-input"
-                  data-field="speed"
-                  data-id="${
-                    song.id
-                  }"
-                  type="number"
-                  min="${MIN_SPEED}"
-                  max="${MAX_SPEED}"
-                  value="${
-                    song.speed
-                  }"
-                >
-
-
-                <button
-                  class="small-button"
-                  data-action="speed-plus"
-                  data-id="${
-                    song.id
-                  }"
-                >
-                  +
-                </button>
-
-
-                <span>
-                  px/с
-                </span>
-
-              </div>
-
-            </div>
-
-          </article>
-
-        `
-      )
-      .join("");
-
-
-  attachEditorEvents();
-}
-
-
-/* =========================
-   EDITOR EVENTS
-   ========================= */
-
-function attachEditorEvents() {
-
-  els.songEditors
-    .querySelectorAll(
-      "[data-field='title']"
-    )
-    .forEach(
-      input => {
-
-        input.addEventListener(
-          "change",
-          () =>
-            saveSongField(
-              input
-            )
-        );
-
-      }
-    );
-
-
-  els.songEditors
-    .querySelectorAll(
-      "[data-field='text']"
-    )
-    .forEach(
-      textarea => {
-
-        textarea.addEventListener(
-          "change",
-          () =>
-            saveSongField(
-              textarea
-            )
-        );
-
-      }
-    );
-
-
-  els.songEditors
-    .querySelectorAll(
-      "[data-field='speed']"
-    )
-    .forEach(
-      input => {
-
-        input.addEventListener(
-          "change",
-          () =>
-            saveSongField(
-              input
-            )
-        );
-
-      }
-    );
-
-
-  els.songEditors
-    .querySelectorAll(
-      "[data-action='delete-song']"
-    )
-    .forEach(
-      button => {
-
-        button.addEventListener(
-          "click",
-          () =>
-            deleteSong(
-              button.dataset.id
-            )
-        );
-
-      }
-    );
-
-
-  els.songEditors
-    .querySelectorAll(
-      "[data-action='speed-minus']"
-    )
-    .forEach(
-      button => {
-
-        button.addEventListener(
-          "click",
-          () =>
-            changeSongSpeed(
-              button.dataset.id,
-              -1
-            )
-        );
-
-      }
-    );
-
-
-  els.songEditors
-    .querySelectorAll(
-      "[data-action='speed-plus']"
-    )
-    .forEach(
-      button => {
-
-        button.addEventListener(
-          "click",
-          () =>
-            changeSongSpeed(
-              button.dataset.id,
-              1
-            )
-        );
-
-      }
-    );
-}
-
-
-/* =========================
-   SAVE SONG FIELD
-   ========================= */
-
-async function saveSongField(
-  element
-) {
-
-  const id =
-    element.dataset.id;
-
-  const field =
-    element.dataset.field;
-
-
-  const song =
-    songs.find(
-      item =>
-        item.id ===
-        id
-    );
-
-
-  if (
-    !song ||
-    !currentUser
-  ) {
-
-    return;
+  if (els.programNameInput) {
+    els.programNameInput.value = currentProgram.title || "";
   }
 
-
-  let value =
-    element.value;
-
-
-  if (
-    field ===
-    "speed"
-  ) {
-
-    value =
-      clamp(
-        Number(
-          value
-        ) ||
-          DEFAULT_SPEED,
-
-        MIN_SPEED,
-
-        MAX_SPEED
-      );
-
-
-    element.value =
-      value;
-
+  if (els.programDateInput) {
+    els.programDateInput.value = currentProgram.service_date || "";
   }
 
+  if (!els.songEditors) return;
 
-  song[field] =
-    value;
+  els.songEditors.innerHTML = songs.map((song, index) => `
+    <article class="editor-card" data-editor-id="${song.id}">
+      <div class="editor-head">
+        <h3>Песня ${String(index + 1).padStart(2, "0")}</h3>
 
-
-  try {
-
-    await supabaseClient
-      .from("songs")
-      .update({
-
-        [field]:
-          value,
-
-        updated_at:
-          new Date().toISOString()
-
-      })
-      .eq(
-        "id",
-        song.id
-      );
-
-
-    renderProgram();
-
-    updateUI();
-
-    showToast(
-      "Сохранено."
-    );
-
-  } catch (error) {
-
-    console.error(
-      error
-    );
-
-    showToast(
-      "Ошибка сохранения."
-    );
-  }
-}
-
-
-/* =========================
-   CHANGE SONG SPEED
-   ========================= */
-
-async function changeSongSpeed(
-  id,
-  delta
-) {
-
-  const song =
-    songs.find(
-      item =>
-        item.id ===
-        id
-    );
-
-
-  if (
-    !song ||
-    !currentUser
-  ) {
-
-    return;
-  }
-
-
-  song.speed =
-    clamp(
-      song.speed + delta,
-
-      MIN_SPEED,
-
-      MAX_SPEED
-    );
-
-
-  try {
-
-    await supabaseClient
-      .from("songs")
-      .update({
-
-        speed:
-          song.speed,
-
-        updated_at:
-          new Date().toISOString()
-
-      })
-      .eq(
-        "id",
-        song.id
-      );
-
-
-    renderEditors();
-
-    renderProgram();
-
-    updateUI();
-
-  } catch (error) {
-
-    console.error(
-      error
-    );
-
-    showToast(
-      "Ошибка сохранения скорости."
-    );
-  }
-}
-
-
-/* ==================================================
-   RENDER PROGRAM
-   ================================================== */
-
-function renderProgram() {
-
-  if (
-    !currentProgram
-  ) {
-
-    renderEmptyProgram();
-
-    return;
-  }
-
-
-  if (
-    !songs.length
-  ) {
-
-    els.program.innerHTML = `
-
-      <div
-        class="empty-state"
-      >
-
-        <h2>
-          В этой программе пока нет песен
-        </h2>
-
-        <p>
-          ${
-            currentUser
-              ? "Добавьте первую песню ниже."
-              : "Войдите, чтобы добавить песни."
-          }
-        </p>
-
+        <button
+          class="delete-button"
+          data-action="delete-song"
+          data-id="${song.id}"
+        >
+          Удалить
+        </button>
       </div>
 
-    `;
+      <div class="editor-field">
+        <label>Название</label>
+        <input
+          class="editor-input"
+          data-field="title"
+          data-id="${song.id}"
+          type="text"
+          value="${escapeAttribute(song.title)}"
+          placeholder="Название песни"
+        >
+      </div>
 
-    els.songNavigation.classList.add(
-      "hidden"
-    );
+      <div class="editor-field">
+        <label>Текст и аккорды</label>
+        <textarea
+          class="editor-textarea"
+          data-field="text"
+          data-id="${song.id}"
+          placeholder="Вставьте текст прямо из Word / Notes — пробелы, табы и переносы строк сохранятся."
+        >${escapeHtml(song.text)}</textarea>
+      </div>
 
-    createEndSpacer();
+      <div class="editor-footer">
+        <div class="editor-speed">
+          <span>Скорость</span>
+          <button class="small-button" data-action="speed-minus" data-id="${song.id}">−</button>
 
+          <input
+            class="speed-input"
+            data-field="speed"
+            data-id="${song.id}"
+            type="number"
+            min="${MIN_SPEED}"
+            max="${MAX_SPEED}"
+            value="${song.speed}"
+          >
+
+          <button class="small-button" data-action="speed-plus" data-id="${song.id}">+</button>
+          <span>px/с</span>
+        </div>
+      </div>
+    </article>
+  `).join("");
+
+  els.songEditors.querySelectorAll("[data-field='title']").forEach(input => {
+    input.addEventListener("change", () => saveSongField(input));
+  });
+
+  els.songEditors.querySelectorAll("[data-field='text']").forEach(textarea => {
+    textarea.addEventListener("change", () => saveSongField(textarea));
+  });
+
+  els.songEditors.querySelectorAll("[data-field='speed']").forEach(input => {
+    input.addEventListener("change", () => saveSongField(input));
+  });
+
+  els.songEditors.querySelectorAll("[data-action='delete-song']").forEach(button => {
+    button.addEventListener("click", () => deleteSong(button.dataset.id));
+  });
+
+  els.songEditors.querySelectorAll("[data-action='speed-minus']").forEach(button => {
+    button.addEventListener("click", () => changeSongSpeed(button.dataset.id, -1));
+  });
+
+  els.songEditors.querySelectorAll("[data-action='speed-plus']").forEach(button => {
+    button.addEventListener("click", () => changeSongSpeed(button.dataset.id, 1));
+  });
+}
+
+async function saveProgram() {
+  if (!currentUser || !currentProgram) {
+    openAuthModal();
     return;
   }
 
+  const title = els.programNameInput.value.trim();
 
-  els.songNavigation.classList.remove(
-    "hidden"
-  );
+  if (!title) {
+    showToast("Введите название программы.");
+    return;
+  }
 
+  const serviceDate = els.programDateInput.value || null;
 
-  els.program.innerHTML =
-    songs
-      .map(
-        (
-          song,
-          index
-        ) => `
+  const { data, error } = await supabaseClient
+    .from("programs")
+    .update({
+      title,
+      service_date: serviceDate,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", currentProgram.id)
+    .select()
+    .single();
 
-          <section
-            class="song"
-            data-song-id="${
-              song.id
-            }"
-            data-song-index="${
-              index
-            }"
-          >
+  if (error) {
+    console.error(error);
+    showToast("Не удалось сохранить программу: " + error.message);
+    return;
+  }
 
-            <header
-              class="song-header"
-            >
+  currentProgram = data;
 
-              <div>
+  document.title = `${data.title} — GRACE WORSHIP`;
+  els.programTitle.textContent = data.title;
+  els.programInfo.textContent = formatDate(data.service_date) || "Дата не указана";
 
-                <div
-                  class="song-number"
-                >
-                  ${
-                    String(
-                      index + 1
-                    ).padStart(
-                      2,
-                      "0"
-                    )
-                  }
-                </div>
+  showToast("Программа сохранена.");
+}
 
+async function deleteCurrentProgram() {
+  if (!currentUser || !currentProgram) {
+    openAuthModal();
+    return;
+  }
 
-                <h2
-                  class="song-title"
-                >
-                  ${
-                    escapeHtml(
-                      song.title ||
-                        "Без названия"
-                    )
-                  }
-                </h2>
+  if (!confirm(`Удалить программу «${currentProgram.title}»?`)) {
+    return;
+  }
 
-              </div>
+  const { data: relations, error: relationError } = await supabaseClient
+    .from("program_songs")
+    .select("song_id")
+    .eq("program_id", currentProgram.id);
 
+  if (relationError) {
+    console.error(relationError);
+    showToast("Не удалось подготовить удаление: " + relationError.message);
+    return;
+  }
 
-              <div
-                class="song-speed-badge"
-              >
-                ${
-                  song.speed
-                } px/с
-              </div>
+  const songIds = (relations || []).map(item => item.song_id);
 
-            </header>
+  const { error: programError } = await supabaseClient
+    .from("programs")
+    .delete()
+    .eq("id", currentProgram.id);
 
+  if (programError) {
+    console.error(programError);
+    showToast("Не удалось удалить программу: " + programError.message);
+    return;
+  }
 
-            <pre
-              class="lyrics-text"
-            >${
-              escapeHtml(
-                song.text ||
-                  ""
-              )
-            }</pre>
+  if (songIds.length) {
+    const { error: songsError } = await supabaseClient
+      .from("songs")
+      .delete()
+      .in("id", songIds);
 
-          </section>
+    if (songsError) {
+      console.error(songsError);
+    }
+  }
 
-        `
-      )
-      .join("");
+  window.location.replace("index.html");
+}
 
+async function addSong() {
+  if (!currentUser || !currentProgram) {
+    openAuthModal();
+    return;
+  }
+
+  const newSong = {
+    title: `Новая песня ${songs.length + 1}`,
+    text: "",
+    speed: globalSpeed
+  };
+
+  els.addSongButton.disabled = true;
+
+  try {
+    const { data: created, error: songError } = await supabaseClient
+      .from("songs")
+      .insert({
+        title: newSong.title,
+        text: newSong.text,
+        speed: newSong.speed
+      })
+      .select()
+      .single();
+
+    if (songError) throw songError;
+
+    const { error: relationError } = await supabaseClient
+      .from("program_songs")
+      .insert({
+        program_id: currentProgram.id,
+        song_id: created.id,
+        position: songs.length
+      });
+
+    if (relationError) {
+      await supabaseClient.from("songs").delete().eq("id", created.id);
+      throw relationError;
+    }
+
+    songs.push({
+      id: created.id,
+      title: created.title,
+      text: created.text || "",
+      speed: Number(created.speed) || DEFAULT_SPEED,
+      created_at: created.created_at,
+      updated_at: created.updated_at
+    });
+
+    renderProgram();
+    renderEditors();
+    updateUI();
+
+    els.editorDetails?.setAttribute("open", "");
+
+    setTimeout(() => {
+      const editor = document.querySelector(`[data-editor-id="${created.id}"]`);
+      editor?.scrollIntoView({ behavior: "smooth", block: "center" });
+      editor?.querySelector(".editor-input")?.focus();
+    }, 50);
+
+    showToast("Песня добавлена.");
+  } catch (error) {
+    console.error(error);
+    showToast("Не удалось добавить песню: " + error.message);
+  } finally {
+    els.addSongButton.disabled = false;
+  }
+}
+
+async function deleteSong(id) {
+  if (!currentUser || !currentProgram) {
+    openAuthModal();
+    return;
+  }
+
+  const song = songs.find(item => item.id === id);
+  if (!song) return;
+
+  if (!confirm(`Удалить песню «${song.title}» из программы?`)) {
+    return;
+  }
+
+  try {
+    const { error: relationError } = await supabaseClient
+      .from("program_songs")
+      .delete()
+      .eq("program_id", currentProgram.id)
+      .eq("song_id", id);
+
+    if (relationError) throw relationError;
+
+    const { error: songError } = await supabaseClient
+      .from("songs")
+      .delete()
+      .eq("id", id);
+
+    if (songError) throw songError;
+
+    songs = songs.filter(item => item.id !== id);
+
+    await normalizePositions();
+
+    currentSongIndex = clamp(
+      currentSongIndex,
+      0,
+      Math.max(0, songs.length - 1)
+    );
+
+    renderProgram();
+    renderEditors();
+    updateUI();
+
+    showToast("Песня удалена.");
+  } catch (error) {
+    console.error(error);
+    showToast("Не удалось удалить песню: " + error.message);
+  }
+}
+
+async function normalizePositions() {
+  if (!currentProgram) return;
+
+  for (let index = 0; index < songs.length; index++) {
+    await supabaseClient
+      .from("program_songs")
+      .update({ position: index })
+      .eq("program_id", currentProgram.id)
+      .eq("song_id", songs[index].id);
+  }
+}
+
+async function saveSongField(element) {
+  if (!currentUser) return;
+
+  const id = element.dataset.id;
+  const field = element.dataset.field;
+  const song = songs.find(item => item.id === id);
+
+  if (!song) return;
+
+  let value = element.value;
+
+  if (field === "speed") {
+    value = clamp(Number(value) || DEFAULT_SPEED, MIN_SPEED, MAX_SPEED);
+    element.value = value;
+  }
+
+  song[field] = value;
+
+  try {
+    const { error } = await supabaseClient
+      .from("songs")
+      .update({
+        title: song.title,
+        text: song.text,
+        speed: song.speed,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", song.id);
+
+    if (error) throw error;
+
+    if (field === "speed") {
+      globalSpeed = song.speed;
+    }
+
+    renderProgram();
+    renderEditors();
+    updateUI();
+
+    showToast("Сохранено.");
+  } catch (error) {
+    console.error(error);
+    showToast("Ошибка сохранения: " + error.message);
+  }
+}
+
+async function changeSongSpeed(id, delta) {
+  const song = songs.find(item => item.id === id);
+  if (!song || !currentUser) return;
+
+  song.speed = clamp(song.speed + delta, MIN_SPEED, MAX_SPEED);
+
+  try {
+    const { error } = await supabaseClient
+      .from("songs")
+      .update({
+        speed: song.speed,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", song.id);
+
+    if (error) throw error;
+
+    globalSpeed = song.speed;
+
+    renderProgram();
+    renderEditors();
+    updateUI();
+  } catch (error) {
+    console.error(error);
+    showToast("Ошибка сохранения скорости: " + error.message);
+  }
+}
+
+/* =========================================================
+   Program rendering
+   ========================================================= */
+
+function renderProgram() {
+  if (pageType !== "program" || !els.program) return;
+
+  if (!songs.length) {
+    els.program.innerHTML = "";
+    els.emptyState?.classList.remove("hidden");
+    els.songNavigation?.classList.add("hidden");
+    return;
+  }
+
+  els.emptyState?.classList.add("hidden");
+  els.songNavigation?.classList.remove("hidden");
+
+  els.program.innerHTML = songs.map((song, index) => `
+    <section class="song" data-song-id="${song.id}" data-song-index="${index}">
+      <header class="song-header">
+        <div>
+          <div class="song-number">${String(index + 1).padStart(2, "0")}</div>
+          <h2 class="song-title">${escapeHtml(song.title || "Без названия")}</h2>
+        </div>
+
+        <div class="song-speed-badge">${song.speed} px/с</div>
+      </header>
+
+      <pre class="lyrics-text">${escapeHtml(song.text || "")}</pre>
+    </section>
+  `).join("");
 
   createEndSpacer();
-
   detectCurrentSong();
-
   updateFontSize();
-
   updateUI();
 }
 
+function createEndSpacer() {
+  if (!els.program) return;
 
-/* =========================
-   EMPTY PROGRAM
-   ========================= */
+  els.program.querySelector(".end-spacer")?.remove();
 
-function renderEmptyProgram() {
+  if (!songs.length) return;
 
-  currentProgram =
-    null;
-
-  songs = [];
-
-  els.program.innerHTML = `
-
-    <div
-      class="empty-state"
-    >
-
-      <h2>
-        Выберите программу
-      </h2>
-
-      <p>
-      из списка выше.
-      </p>
-
-    </div>
-
-  `;
-
-
-  els.programEditor.classList.add(
-    "hidden"
-  );
-
-  els.songEditors.innerHTML =
-    "";
-
-  els.addSongButton.classList.add(
-    "hidden"
-  );
-
-  els.songNavigation.classList.add(
-    "hidden"
-  );
-
-
-  els.programTitle.textContent =
-    "Выберите программу";
-
-  els.programInfo.textContent =
-    "Создайте программу служения";
+  const spacer = document.createElement("div");
+  spacer.className = "end-spacer";
+  spacer.style.height = `${window.innerHeight * END_PADDING_RATIO}px`;
+  els.program.appendChild(spacer);
 }
 
-
-/* ==================================================
-   PROGRAM HEADER
-   ================================================== */
-
-function updateProgramHeader() {
-
-  if (
-    !currentProgram
-  ) {
-
-    return;
-  }
-
-
-  els.programTitle.textContent =
-    currentProgram.title;
-
-
-  els.programInfo.textContent =
-    currentProgram.service_date
-      ? formatDate(
-          currentProgram.service_date
-        )
-      : "Программа служения";
-}
-
-
-/* ==================================================
-   SCROLLING
-   ================================================== */
+/* =========================================================
+   Scrolling
+   ========================================================= */
 
 function detectCurrentSong() {
-
-  if (
-    !songs.length
-  ) {
-
-    currentSongIndex =
-      0;
-
+  if (!songs.length || pageType !== "program") {
+    currentSongIndex = 0;
     return null;
   }
 
+  const songElements = document.querySelectorAll(".song");
+  let detected = 0;
 
-  const elements =
-    document.querySelectorAll(
-      ".song"
-    );
+  for (let i = 0; i < songElements.length; i++) {
+    const top = songElements[i].getBoundingClientRect().top;
 
-
-  let detected =
-    0;
-
-
-  for (
-    let i = 0;
-    i <
-      elements.length;
-    i++
-  ) {
-
-    const top =
-      elements[
-        i
-      ]
-        .getBoundingClientRect()
-        .top;
-
-
-    if (
-      top <=
-      SWITCH_LINE
-    ) {
-
-      detected =
-        i;
-
+    if (top <= SWITCH_LINE) {
+      detected = i;
     } else {
-
       break;
-
     }
   }
 
-
-  currentSongIndex =
-    detected;
-
-
-  return elements[
-    detected
-  ];
+  currentSongIndex = detected;
+  return songElements[detected];
 }
-
 
 function getCurrentSpeed() {
-
-  return (
-    songs[
-      currentSongIndex
-    ]?.speed ||
-    DEFAULT_SPEED
-  );
+  return songs[currentSongIndex]?.speed || DEFAULT_SPEED;
 }
-
 
 function hasProgramEnded() {
+  if (!songs.length) return true;
 
-  if (
-    !songs.length
-  ) {
+  const songElements = document.querySelectorAll(".song");
+  const lastSong = songElements[songElements.length - 1];
 
-    return true;
-  }
+  if (!lastSong) return true;
 
-
-  const elements =
-    document.querySelectorAll(
-      ".song"
-    );
-
-
-  const lastSong =
-    elements[
-      elements.length - 1
-    ];
-
-
-  if (
-    !lastSong
-  ) {
-
-    return true;
-  }
-
-
-  return (
-    lastSong
-      .getBoundingClientRect()
-      .bottom <=
-    SWITCH_LINE
-  );
+  return lastSong.getBoundingClientRect().bottom <= SWITCH_LINE;
 }
 
+function scrollLoop(timestamp) {
+  if (!isPlaying) return;
 
-function scrollLoop(
-  timestamp
-) {
-
-  if (
-    !isPlaying
-  ) {
-
-    return;
+  if (lastTimestamp === null) {
+    lastTimestamp = timestamp;
   }
 
-
-  if (
-    lastTimestamp ===
-    null
-  ) {
-
-    lastTimestamp =
-      timestamp;
-  }
-
-
-  const deltaTime =
-    Math.min(
-      (
-        timestamp -
-        lastTimestamp
-      ) / 1000,
-
-      0.05
-    );
-
-
-  lastTimestamp =
-    timestamp;
-
+  const deltaTime = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
+  lastTimestamp = timestamp;
 
   detectCurrentSong();
 
-
-  const speed =
-    getCurrentSpeed();
-
-
-  window.scrollBy(
-    0,
-    speed *
-      deltaTime
-  );
-
+  const speed = getCurrentSpeed();
+  window.scrollBy(0, speed * deltaTime);
 
   detectCurrentSong();
 
-
-  if (
-    hasProgramEnded()
-  ) {
-
+  if (hasProgramEnded()) {
     pause();
-
     return;
   }
 
-
-  animationFrameId =
-    requestAnimationFrame(
-      scrollLoop
-    );
+  animationFrameId = requestAnimationFrame(scrollLoop);
 }
-
 
 function play() {
-
-  if (
-    !songs.length
-  ) {
-
-    showToast(
-      "В программе нет песен."
-    );
-
+  if (!songs.length) {
+    showToast("В программе нет песен.");
     return;
   }
 
+  if (isPlaying) return;
 
-  if (
-    isPlaying
-  ) {
-
-    return;
-  }
-
-
-  isPlaying =
-    true;
-
-  lastTimestamp =
-    null;
-
-
-  animationFrameId =
-    requestAnimationFrame(
-      scrollLoop
-    );
-
-
+  isPlaying = true;
+  lastTimestamp = null;
+  animationFrameId = requestAnimationFrame(scrollLoop);
   updateUI();
 }
-
 
 function pause() {
+  isPlaying = false;
+  lastTimestamp = null;
 
-  isPlaying =
-    false;
-
-  lastTimestamp =
-    null;
-
-
-  if (
-    animationFrameId !==
-    null
-  ) {
-
-    cancelAnimationFrame(
-      animationFrameId
-    );
-
-    animationFrameId =
-      null;
+  if (animationFrameId !== null) {
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
   }
-
 
   updateUI();
 }
 
-
 function reset() {
-
   pause();
 
+  if (!songs.length) return;
+
+  const firstSong = document.querySelector(".song");
+  if (!firstSong) return;
+
+  const target = firstSong.getBoundingClientRect().top + window.scrollY - SWITCH_LINE;
 
   window.scrollTo({
-    top: 0,
+    top: Math.max(0, target),
     behavior: "auto"
   });
 
-
-  currentSongIndex =
-    0;
-
-
+  currentSongIndex = 0;
   updateUI();
 }
 
+/* =========================================================
+   Navigation
+   ========================================================= */
 
-/* ==================================================
-   NAVIGATION
-   ================================================== */
+function goToSong(index) {
+  if (!songs.length) return;
 
-function goToSong(
-  index
-) {
+  const targetIndex = clamp(index, 0, songs.length - 1);
+  const songElements = document.querySelectorAll(".song");
+  const targetSong = songElements[targetIndex];
 
-  if (
-    !songs.length
-  ) {
+  if (!targetSong) return;
 
-    return;
-  }
-
-
-  const targetIndex =
-    clamp(
-      index,
-
-      0,
-
-      songs.length - 1
-    );
-
-
-  const elements =
-    document.querySelectorAll(
-      ".song"
-    );
-
-
-  const targetSong =
-    elements[
-      targetIndex
-    ];
-
-
-  if (
-    !targetSong
-  ) {
-
-    return;
-  }
-
-
-  currentSongIndex =
-    targetIndex;
-
+  currentSongIndex = targetIndex;
 
   const target =
-    targetSong
-      .getBoundingClientRect()
-      .top +
+    targetSong.getBoundingClientRect().top +
     window.scrollY -
     SWITCH_LINE;
 
-
   const maxScroll =
-    document.documentElement
-      .scrollHeight -
-    window.innerHeight;
-
+    document.documentElement.scrollHeight - window.innerHeight;
 
   window.scrollTo({
-
-    top:
-      clamp(
-        target,
-
-        0,
-
-        Math.max(
-          0,
-          maxScroll
-        )
-      ),
-
-    behavior:
-      "smooth"
-
+    top: clamp(target, 0, Math.max(0, maxScroll)),
+    behavior: "smooth"
   });
 
-
   updateUI();
 }
 
-
-/* ==================================================
-   SPEED
-   ================================================== */
-
-function changeGlobalSpeed(
-  delta
-) {
-
-  globalSpeed =
-    clamp(
-      globalSpeed + delta,
-
-      MIN_SPEED,
-
-      MAX_SPEED
-    );
-
-
-  updateUI();
-}
-
-
-async function applySpeedToAll() {
-
-  if (
-    !songs.length
-  ) {
-
-    return;
-  }
-
-
-  if (
-    !currentUser ||
-    !currentProgram
-  ) {
-
-    openAuthModal();
-
-    return;
-  }
-
-
-  try {
-
-    for (
-      const song of songs
-    ) {
-
-      song.speed =
-        globalSpeed;
-
-
-      await supabaseClient
-        .from("songs")
-        .update({
-
-          speed:
-            globalSpeed,
-
-          updated_at:
-            new Date().toISOString()
-
-        })
-        .eq(
-          "id",
-          song.id
-        );
-
-    }
-
-
-    renderEditors();
-
-    renderProgram();
-
-    updateUI();
-
-
-    showToast(
-      "Скорость применена ко всем песням."
-    );
-
-  } catch (error) {
-
-    console.error(
-      error
-    );
-
-    showToast(
-      "Не удалось сохранить скорость."
-    );
-  }
-}
-
-
-/* ==================================================
-   FONT
-   ================================================== */
-
-function changeFontSize(
-  delta
-) {
-
-  fontSize =
-    clamp(
-      fontSize + delta,
-
-      MIN_FONT_SIZE,
-
-      MAX_FONT_SIZE
-    );
-
-
-  localStorage.setItem(
-    FONT_STORAGE_KEY,
-    fontSize
-  );
-
-
-  updateFontSize();
-}
-
-
-function updateFontSize() {
-
-  document.documentElement.style.setProperty(
-    "--lyrics-font-size",
-
-    `${fontSize}px`
-  );
-
-
-  document
-    .querySelectorAll(
-      ".lyrics-text"
-    )
-    .forEach(
-      element => {
-
-        element.style.fontSize =
-          `${fontSize}px`;
-
-      }
-    );
-
-
-  if (
-    els.fontSizeValue
-  ) {
-
-    els.fontSizeValue.textContent =
-      `${fontSize} px`;
-
-  }
-}
-
-
-/* ==================================================
-   THEME
-   ================================================== */
-
-function applyTheme() {
-
-  const theme =
-    localStorage.getItem(
-      THEME_STORAGE_KEY
-    ) ||
-    "light";
-
-
-  const isDark =
-    theme ===
-    "dark";
-
-
-  document.body.classList.toggle(
-    "dark-theme",
-    isDark
-  );
-
-
-  if (
-    els.themeToggle
-  ) {
-
-    els.themeToggle.textContent =
-      isDark
-        ? "☀️"
-        : "🌙";
-  }
-}
-
-
-function toggleTheme() {
-
-  const isDark =
-    document.body.classList.toggle(
-      "dark-theme"
-    );
-
-
-  localStorage.setItem(
-    THEME_STORAGE_KEY,
-
-    isDark
-      ? "dark"
-      : "light"
-  );
-
-
-  els.themeToggle.textContent =
-    isDark
-      ? "☀️"
-      : "🌙";
-}
-
-
-/* ==================================================
-   UI
-   ================================================== */
-
-function updateUI() {
-
-  updateProgramHeader();
-
-  detectCurrentSong();
-
-
-  els.globalSpeedValue.textContent =
-    globalSpeed;
-
-
-  els.fontSizeValue.textContent =
-    `${fontSize} px`;
-
-
-  const count =
-    songs.length;
-
-
-  els.songCounter.textContent =
-    `${
-      String(
-        count
-          ? currentSongIndex + 1
-          : 0
-      ).padStart(
-        2,
-        "0"
-      )
-    } / ${
-      String(
-        count
-      ).padStart(
-        2,
-        "0"
-      )
-    }`;
-
-
-  els.prevSongButton.disabled =
-    currentSongIndex <= 0;
-
-
-  els.nextSongButton.disabled =
-    count === 0 ||
-    currentSongIndex >=
-      count - 1;
-
-
-  els.playButton.textContent =
-    isPlaying
-      ? "▶︎ Идёт"
-      : "▶︎ Начать";
-
-
-  if (
-    currentUser
-  ) {
-
-    els.authButton.classList.add(
-      "hidden"
-    );
-
-    els.logoutButton.classList.remove(
-      "hidden"
-    );
-
-    els.createProgramButton.classList.remove(
-      "hidden"
-    );
-
-  } else {
-
-    els.authButton.classList.remove(
-      "hidden"
-    );
-
-    els.logoutButton.classList.add(
-      "hidden"
-    );
-
-    els.createProgramButton.classList.add(
-      "hidden"
-    );
-  }
-
-
-  document
-    .querySelectorAll(
-      ".song"
-    )
-    .forEach(
-      (
-        element,
-        index
-      ) => {
-
-        element.classList.toggle(
-          "is-current",
-
-          index ===
-            currentSongIndex
-        );
-
-      }
-    );
-
-
-  updateFontSize();
-}
-
-
-/* ==================================================
-   STATUS
-   ================================================== */
-
-function setStatus(
-  text,
-  state
-) {
-
-  const dot =
-    document.querySelector(
-      ".connection-badge .status-dot"
-    );
-
-
-  if (
-    dot
-  ) {
-
-    dot.classList.remove(
-      "online",
-      "error"
-    );
-
-
-    if (
-      state ===
-      "online"
-    ) {
-
-      dot.classList.add(
-        "online"
-      );
-    }
-
-
-    if (
-      state ===
-      "error"
-    ) {
-
-      dot.classList.add(
-        "error"
-      );
-    }
-  }
-
-
-  if (
-    els.databaseStatus
-  ) {
-
-    els.databaseStatus.textContent =
-      state ===
-      "error"
-        ? "Ошибка Supabase"
-        : "Supabase";
-  }
-}
-
-
-/* ==================================================
-   END SPACER
-   ================================================== */
-
-function createEndSpacer() {
-
-  const old =
-    document.querySelector(
-      ".end-spacer"
-    );
-
-
-  if (
-    old
-  ) {
-
-    old.remove();
-  }
-
-
-  if (
-    !songs.length
-  ) {
-
-    return;
-  }
-
-
-  const spacer =
-    document.createElement(
-      "div"
-    );
-
-
-  spacer.className =
-    "end-spacer";
-
-
-  spacer.style.height =
-    `${
-      window.innerHeight *
-      END_PADDING_RATIO
-    }px`;
-
-
-  els.program.appendChild(
-    spacer
-  );
-}
-
-
-/* ==================================================
-   KEYBOARD
-   ================================================== */
-
-function handleKeyboard(
-  event
-) {
-
-  const active =
-    document.activeElement;
-
+function handleKeyboard(event) {
+  const active = document.activeElement;
 
   const isTyping =
     active &&
-    [
-      "INPUT",
-      "TEXTAREA",
-      "SELECT"
-    ].includes(
-      active.tagName
-    );
+    ["INPUT", "TEXTAREA", "SELECT"].includes(active.tagName);
 
+  if (isTyping || pageType !== "program") return;
 
-  if (
-    isTyping
-  ) {
+  if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+    event.preventDefault();
+    goToSong(currentSongIndex - 1);
+  }
 
+  if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+    event.preventDefault();
+    goToSong(currentSongIndex + 1);
+  }
+
+  if (event.code === "Space") {
+    event.preventDefault();
+    isPlaying ? pause() : play();
+  }
+}
+
+/* =========================================================
+   Controls
+   ========================================================= */
+
+function changeGlobalSpeed(delta) {
+  globalSpeed = clamp(globalSpeed + delta, MIN_SPEED, MAX_SPEED);
+  updateUI();
+}
+
+async function applySpeedToAll() {
+  if (!songs.length) return;
+
+  if (!currentUser) {
+    openAuthModal();
     return;
   }
 
+  const previous = songs.map(song => song.speed);
 
-  if (
-    event.key ===
-    "ArrowLeft"
-  ) {
+  songs.forEach(song => {
+    song.speed = globalSpeed;
+  });
 
-    event.preventDefault();
+  try {
+    for (const song of songs) {
+      const { error } = await supabaseClient
+        .from("songs")
+        .update({
+          speed: song.speed,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", song.id);
 
-    goToSong(
-      currentSongIndex - 1
-    );
-  }
+      if (error) throw error;
+    }
 
+    renderProgram();
+    renderEditors();
+    updateUI();
 
-  if (
-    event.key ===
-    "ArrowRight"
-  ) {
+    showToast("Скорость применена ко всем песням.");
+  } catch (error) {
+    console.error(error);
 
-    event.preventDefault();
+    songs.forEach((song, index) => {
+      song.speed = previous[index];
+    });
 
-    goToSong(
-      currentSongIndex + 1
-    );
+    renderProgram();
+    renderEditors();
+
+    showToast("Не удалось сохранить скорость: " + error.message);
   }
 }
 
+function changeFontSize(delta) {
+  fontSize = clamp(fontSize + delta, MIN_FONT_SIZE, MAX_FONT_SIZE);
+  localStorage.setItem(FONT_STORAGE_KEY, fontSize);
+  updateFontSize();
+}
 
-/* ==================================================
-   HELPERS
-   ================================================== */
-
-function clamp(
-  value,
-  min,
-  max
-) {
-
-  return Math.min(
-    max,
-
-    Math.max(
-      min,
-      value
-    )
+function updateFontSize() {
+  document.documentElement.style.setProperty(
+    "--lyrics-font-size",
+    `${fontSize}px`
   );
+
+  document.querySelectorAll(".lyrics-text").forEach(element => {
+    element.style.fontSize = `${fontSize}px`;
+  });
+
+  if (els.fontSizeValue) {
+    els.fontSizeValue.textContent = `${fontSize} px`;
+  }
 }
 
+/* =========================================================
+   Authentication
+   ========================================================= */
 
-function escapeHtml(
-  value
-) {
+async function checkSession() {
+  const { data, error } = await supabaseClient.auth.getSession();
 
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  currentUser = data.session?.user || null;
+}
+
+function updateAccountUI() {
+  if (currentUser) {
+    els.authButton?.classList.add("hidden");
+    els.logoutButton?.classList.remove("hidden");
+  } else {
+    els.authButton?.classList.remove("hidden");
+    els.logoutButton?.classList.add("hidden");
+  }
+
+  if (pageType === "home") {
+    els.createProgramButton?.classList.toggle("hidden", !currentUser);
+  }
+
+  if (pageType === "program") {
+    renderEditors();
+  }
+}
+
+function openAuthModal() {
+  if (!els.authModal) return;
+
+  if (els.authMessage) {
+    els.authMessage.textContent = "";
+  }
+
+  els.authModal.classList.remove("hidden");
+  els.authModal.setAttribute("aria-hidden", "false");
+
+  setTimeout(() => els.authEmail?.focus(), 50);
+}
+
+function closeAuthModal() {
+  els.authModal?.classList.add("hidden");
+  els.authModal?.setAttribute("aria-hidden", "true");
+}
+
+async function login() {
+  const email = els.authEmail.value.trim();
+  const password = els.authPassword.value;
+
+  if (!email || !password) {
+    els.authMessage.textContent = "Введите email и пароль.";
+    return;
+  }
+
+  setAuthLoading(true);
+  els.authMessage.textContent = "Выполняется вход…";
+
+  const { error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  setAuthLoading(false);
+
+  if (error) {
+    console.error(error);
+    els.authMessage.textContent = translateAuthError(error.message);
+    return;
+  }
+
+  closeAuthModal();
+  showToast("Вы вошли в систему.");
+
+  if (pageType === "home") {
+    await loadPrograms();
+  }
+
+  if (pageType === "program") {
+    await loadProgramSongs(currentProgram.id);
+    renderProgram();
+    renderEditors();
+    updateUI();
+  }
+}
+
+async function signup() {
+  const email = els.authEmail.value.trim();
+  const password = els.authPassword.value;
+
+  if (!email || !password) {
+    els.authMessage.textContent = "Введите email и пароль.";
+    return;
+  }
+
+  if (password.length < 6) {
+    els.authMessage.textContent = "Пароль должен содержать минимум 6 символов.";
+    return;
+  }
+
+  setAuthLoading(true);
+  els.authMessage.textContent = "Создание аккаунта…";
+
+  const { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password
+  });
+
+  setAuthLoading(false);
+
+  if (error) {
+    console.error(error);
+    els.authMessage.textContent = translateAuthError(error.message);
+    return;
+  }
+
+  if (data.session) {
+    closeAuthModal();
+    currentUser = data.session.user;
+    updateAccountUI();
+    showToast("Аккаунт создан. Вы вошли.");
+  } else {
+    els.authMessage.textContent =
+      "Аккаунт создан. Проверьте почту и подтвердите email, затем войдите.";
+  }
+}
+
+async function logout() {
+  pause();
+
+  const { error } = await supabaseClient.auth.signOut();
+
+  if (error) {
+    console.error(error);
+    showToast("Ошибка выхода: " + error.message);
+    return;
+  }
+
+  currentUser = null;
+  updateAccountUI();
+  showToast("Вы вышли.");
+
+  if (pageType === "program") {
+    if (els.editorDetails) els.editorDetails.removeAttribute("open");
+  }
+}
+
+function setAuthLoading(isLoading) {
+  if (els.loginButton) els.loginButton.disabled = isLoading;
+  if (els.signupButton) els.signupButton.disabled = isLoading;
+}
+
+/* =========================================================
+   Copy current program link
+   ========================================================= */
+
+function copyCurrentProgramLink() {
+  if (!currentProgram) return;
+
+  const url = new URL("program.html", window.location.href);
+  url.searchParams.set("program", currentProgram.id);
+
+  navigator.clipboard.writeText(url.href)
+    .then(() => showToast("Ссылка на программу скопирована."))
+    .catch(() => showToast("Не удалось скопировать ссылку."));
+}
+
+/* =========================================================
+   Theme
+   ========================================================= */
+
+function applyTheme() {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || "light";
+  const isDark = savedTheme === "dark";
+
+  document.body.classList.toggle("dark-theme", isDark);
+
+  if (els.themeToggle) {
+    els.themeToggle.textContent = isDark ? "☀️" : "🌙";
+  }
+}
+
+function toggleTheme() {
+  const isDark = document.body.classList.toggle("dark-theme");
+
+  localStorage.setItem(
+    THEME_STORAGE_KEY,
+    isDark ? "dark" : "light"
+  );
+
+  if (els.themeToggle) {
+    els.themeToggle.textContent = isDark ? "☀️" : "🌙";
+  }
+}
+
+/* =========================================================
+   UI
+   ========================================================= */
+
+function updateUI() {
+  if (pageType !== "program") return;
+
+  detectCurrentSong();
+
+  const count = songs.length;
+
+  if (els.songCounter) {
+    els.songCounter.textContent =
+      `${String(count ? currentSongIndex + 1 : 0).padStart(2, "0")} / ${String(count).padStart(2, "0")}`;
+  }
+
+  if (els.globalSpeedValue) {
+    els.globalSpeedValue.textContent = globalSpeed;
+  }
+
+  if (els.fontSizeValue) {
+    els.fontSizeValue.textContent = `${fontSize} px`;
+  }
+
+  document.querySelectorAll(".song").forEach((element, index) => {
+    element.classList.toggle(
+      "is-current",
+      index === currentSongIndex
+    );
+  });
+
+  if (els.prevSongButton) {
+    els.prevSongButton.disabled = currentSongIndex <= 0;
+  }
+
+  if (els.nextSongButton) {
+    els.nextSongButton.disabled =
+      currentSongIndex >= count - 1 || count === 0;
+  }
+
+  if (els.playButton) {
+    els.playButton.textContent =
+      isPlaying ? "▶︎ Идёт" : "▶︎ Начать";
+  }
+
+  updateFontSize();
+}
+
+/* =========================================================
+   Window / keyboard
+   ========================================================= */
+
+window.addEventListener("resize", () => {
+  if (pageType === "program") {
+    createEndSpacer();
+  }
+});
+
+document.addEventListener("keydown", handleKeyboard);
+
+/* =========================================================
+   Helpers
+   ========================================================= */
+
+function formatDate(dateString) {
+  if (!dateString) return "";
+
+  const parts = String(dateString).split("-");
+  if (parts.length !== 3) return dateString;
+
+  const [year, month, day] = parts;
+  return `${day}.${month}.${year}`;
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function escapeHtml(value) {
   return String(value)
-
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-
-    .replaceAll(
-      ">",
-      "&gt;"
-    )
-
-    .replaceAll(
-      '"',
-      "&quot;"
-    )
-
-    .replaceAll(
-      "'",
-      "&#039;"
-    );
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
-
-function escapeAttribute(
-  value
-) {
-
-  return escapeHtml(
-    value
-  );
+function escapeAttribute(value) {
+  return escapeHtml(value);
 }
 
+function translateAuthError(message) {
+  const text = String(message || "");
 
-function formatDate(
-  date
-) {
-
-  if (!date) {
-    return "";
+  if (text.toLowerCase().includes("invalid login credentials")) {
+    return "Неверный email или пароль.";
   }
 
-
-  const parts =
-    date.split("-");
-
-
-  if (
-    parts.length !== 3
-  ) {
-
-    return date;
+  if (text.toLowerCase().includes("email not confirmed")) {
+    return "Сначала подтвердите email через письмо.";
   }
 
+  if (text.toLowerCase().includes("user already registered")) {
+    return "Этот email уже зарегистрирован.";
+  }
 
-  return `${parts[2]}.${parts[1]}.${parts[0]}`;
+  return text;
 }
 
+function showToast(message) {
+  if (!els.toast) return;
 
-function showToast(
-  message
-) {
+  clearTimeout(toastTimer);
 
-  clearTimeout(
-    toastTimer
-  );
+  els.toast.textContent = message;
+  els.toast.classList.add("show");
 
-
-  els.toast.textContent =
-    message;
-
-
-  els.toast.classList.add(
-    "show"
-  );
-
-
-  toastTimer =
-    setTimeout(
-      () => {
-
-        els.toast.classList.remove(
-          "show"
-        );
-
-      },
-      2500
-    );
+  toastTimer = setTimeout(() => {
+    els.toast.classList.remove("show");
+  }, 2500);
 }
+
+/* =========================================================
+   Bind page-specific buttons after all functions exist
+   ========================================================= */
+
+document.addEventListener("DOMContentLoaded", () => {
+  els.createProgramButton?.addEventListener("click", createProgram);
+
+  els.fontMinus?.addEventListener("click", () => changeFontSize(-1));
+  els.fontPlus?.addEventListener("click", () => changeFontSize(1));
+
+  els.speedMinus?.addEventListener("click", () => changeGlobalSpeed(-1));
+  els.speedPlus?.addEventListener("click", () => changeGlobalSpeed(1));
+  els.applySpeedAll?.addEventListener("click", applySpeedToAll);
+
+  els.playButton?.addEventListener("click", play);
+  els.pauseButton?.addEventListener("click", pause);
+  els.resetButton?.addEventListener("click", reset);
+
+  els.prevSongButton?.addEventListener("click", () => {
+    goToSong(currentSongIndex - 1);
+  });
+
+  els.nextSongButton?.addEventListener("click", () => {
+    goToSong(currentSongIndex + 1);
+  });
+
+  els.copyProgramLinkButton?.addEventListener("click", copyCurrentProgramLink);
+
+  els.saveProgramButton?.addEventListener("click", saveProgram);
+  els.deleteProgramButton?.addEventListener("click", deleteCurrentProgram);
+  els.addSongButton?.addEventListener("click", addSong);
+
+  updateFontSize();
+});

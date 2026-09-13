@@ -1,105 +1,41 @@
-/* =========================================================
-   WORSHIP SCROLL
-   Dynamic Songs
-   Original Chord Formatting
-   Light / Dark Theme
-========================================================= */
+/* ==================================================
+   GRACE WORSHIP — SCROLL
+   PROGRAMS + SUPABASE
+   ================================================== */
 
 
-/* =========================================================
-   DOM
-========================================================= */
+/* =========================
+   SUPABASE
+   ========================= */
 
-const program =
-  document.getElementById("program");
+const SUPABASE_URL =
+  "https://ylcnkauqewvjvocbmweh.supabase.co";
 
-const songEditors =
-  document.getElementById("songEditors");
+const SUPABASE_PUBLISHABLE_KEY =
+  "sb_publishable_KIhYKuei7TMvbKf0JGzwOA_JPpLb7lP";
 
-const addSongButton =
-  document.getElementById("addSongButton");
-
-const statusElement =
-  document.getElementById("status");
-
-const songCounter =
-  document.getElementById("songCounter");
-
-const prevSongButton =
-  document.getElementById("prevSong");
-
-const nextSongButton =
-  document.getElementById("nextSong");
-
-const playButton =
-  document.getElementById("playButton");
-
-const pauseButton =
-  document.getElementById("pauseButton");
-
-const resetButton =
-  document.getElementById("resetButton");
-
-const fontMinus =
-  document.getElementById("fontMinus");
-
-const fontPlus =
-  document.getElementById("fontPlus");
-
-const fontSizeElement =
-  document.getElementById("fontSize");
-
-const globalSpeedInput =
-  document.getElementById("globalSpeed");
-
-const globalSpeedMinus =
-  document.getElementById("globalSpeedMinus");
-
-const globalSpeedPlus =
-  document.getElementById("globalSpeedPlus");
-
-const applyAllButton =
-  document.getElementById("applyAll");
-
-const themeToggle =
-  document.getElementById("themeToggle");
+const supabaseClient =
+  window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
 
 
-/* =========================================================
+/* =========================
    SETTINGS
-========================================================= */
+   ========================= */
 
 const MIN_SPEED = 1;
-
 const MAX_SPEED = 100;
 
 const DEFAULT_SPEED = 18;
 
 const MIN_FONT_SIZE = 14;
-
 const MAX_FONT_SIZE = 60;
-
-
-/*
-   Линия переключения песен.
-*/
 
 const SWITCH_LINE = 140;
 
-
-/*
-   Пространство после последней песни.
-*/
-
 const END_PADDING_RATIO = 1;
-
-
-/*
-   LocalStorage
-*/
-
-const SONGS_STORAGE_KEY =
-  "worship-scroll-songs";
 
 const FONT_STORAGE_KEY =
   "worship-scroll-font-size";
@@ -108,20 +44,20 @@ const THEME_STORAGE_KEY =
   "worship-scroll-theme";
 
 
-/* =========================================================
+/* =========================
    STATE
-========================================================= */
+   ========================= */
+
+let programs = [];
+
+let currentProgram = null;
 
 let songs = [];
 
-let isPlaying = false;
-
-let animationFrame = null;
-
-let lastTimestamp = null;
-
 let currentSongIndex = 0;
 
+let globalSpeed =
+  DEFAULT_SPEED;
 
 let fontSize =
   Number(
@@ -130,907 +66,3376 @@ let fontSize =
     )
   ) || 22;
 
+let currentUser = null;
 
-/*
-   Светлая тема — основная.
-*/
+let isPlaying = false;
 
-let currentTheme =
-  localStorage.getItem(
-    THEME_STORAGE_KEY
-  ) || "light";
+let animationFrameId = null;
 
+let lastTimestamp = null;
 
-/* =========================================================
-   THEME
-========================================================= */
-
-function applyTheme() {
-
-  /*
-     Если тема dark —
-     добавляем класс body.
-  */
-
-  if (
-    currentTheme === "dark"
-  ) {
-
-    document.body.classList.add(
-      "dark-theme"
-    );
-
-    themeToggle.textContent =
-      "☀️";
-
-    themeToggle.title =
-      "Переключить на светлую тему";
-
-    themeToggle.setAttribute(
-      "aria-label",
-      "Переключить на светлую тему"
-    );
-
-  } else {
-
-    document.body.classList.remove(
-      "dark-theme"
-    );
-
-    themeToggle.textContent =
-      "🌙";
-
-    themeToggle.title =
-      "Переключить на тёмную тему";
-
-    themeToggle.setAttribute(
-      "aria-label",
-      "Переключить на тёмную тему"
-    );
-
-  }
+let toastTimer = null;
 
 
-  /*
-     Сохраняем выбор.
-  */
+/* =========================
+   ELEMENTS
+   ========================= */
 
-  localStorage.setItem(
-    THEME_STORAGE_KEY,
-    currentTheme
-  );
-
-}
+const els = {};
 
 
-/* =========================================================
-   TOGGLE THEME
-========================================================= */
+document.addEventListener(
+  "DOMContentLoaded",
+  init
+);
 
-function toggleTheme() {
 
-  if (
-    currentTheme === "light"
-  ) {
+/* ==================================================
+   INIT
+   ================================================== */
 
-    currentTheme = "dark";
+async function init() {
 
-  } else {
-
-    currentTheme = "light";
-
-  }
-
+  cacheElements();
 
   applyTheme();
 
+  bindEvents();
+
+  updateFontSize();
+
+  await checkSession();
+
+  await loadPrograms();
+
+  await loadProgramFromUrl();
+
+  updateUI();
 }
 
 
-/* =========================================================
-   SONG DATA
-========================================================= */
+/* =========================
+   CACHE ELEMENTS
+   ========================= */
 
-function createSongData(
-  title = "",
-  text = "",
-  speed = DEFAULT_SPEED
-) {
+function cacheElements() {
 
-  return {
+  els.themeToggle =
+    document.getElementById(
+      "themeToggle"
+    );
 
-    id:
-      Date.now().toString(36) +
-      Math.random()
-        .toString(36)
-        .slice(2),
+  els.authButton =
+    document.getElementById(
+      "authButton"
+    );
 
-    title,
-
-    text,
-
-    speed
-
-  };
-
-}
-
-
-/* =========================================================
-   STORAGE
-========================================================= */
-
-function saveSongs() {
-
-  localStorage.setItem(
-    SONGS_STORAGE_KEY,
-    JSON.stringify(songs)
-  );
-
-}
-
-
-function loadSongs() {
-
-  const saved =
-    localStorage.getItem(
-      SONGS_STORAGE_KEY
+  els.logoutButton =
+    document.getElementById(
+      "logoutButton"
     );
 
 
-  if (!saved) {
+  els.fontMinus =
+    document.getElementById(
+      "fontMinus"
+    );
+
+  els.fontPlus =
+    document.getElementById(
+      "fontPlus"
+    );
+
+  els.fontSizeValue =
+    document.getElementById(
+      "fontSizeValue"
+    );
+
+
+  els.speedMinus =
+    document.getElementById(
+      "speedMinus"
+    );
+
+  els.speedPlus =
+    document.getElementById(
+      "speedPlus"
+    );
+
+  els.globalSpeedValue =
+    document.getElementById(
+      "globalSpeedValue"
+    );
+
+  els.applySpeedAll =
+    document.getElementById(
+      "applySpeedAll"
+    );
+
+
+  els.playButton =
+    document.getElementById(
+      "playButton"
+    );
+
+  els.pauseButton =
+    document.getElementById(
+      "pauseButton"
+    );
+
+  els.resetButton =
+    document.getElementById(
+      "resetButton"
+    );
+
+
+  els.programTitle =
+    document.getElementById(
+      "programTitle"
+    );
+
+  els.programInfo =
+    document.getElementById(
+      "programInfo"
+    );
+
+
+  els.programListSection =
+    document.getElementById(
+      "programListSection"
+    );
+
+  els.programList =
+    document.getElementById(
+      "programList"
+    );
+
+  els.noPrograms =
+    document.getElementById(
+      "noPrograms"
+    );
+
+  els.createProgramButton =
+    document.getElementById(
+      "createProgramButton"
+    );
+
+
+  els.program =
+    document.getElementById(
+      "program"
+    );
+
+
+  els.songNavigation =
+    document.getElementById(
+      "songNavigation"
+    );
+
+  els.prevSongButton =
+    document.getElementById(
+      "prevSongButton"
+    );
+
+  els.nextSongButton =
+    document.getElementById(
+      "nextSongButton"
+    );
+
+  els.songCounter =
+    document.getElementById(
+      "songCounter"
+    );
+
+
+  els.programEditor =
+    document.getElementById(
+      "programEditor"
+    );
+
+  els.programNameInput =
+    document.getElementById(
+      "programNameInput"
+    );
+
+  els.programDateInput =
+    document.getElementById(
+      "programDateInput"
+    );
+
+  els.saveProgramButton =
+    document.getElementById(
+      "saveProgramButton"
+    );
+
+  els.deleteProgramButton =
+    document.getElementById(
+      "deleteProgramButton"
+    );
+
+
+  els.addSongButton =
+    document.getElementById(
+      "addSongButton"
+    );
+
+  els.songEditors =
+    document.getElementById(
+      "songEditors"
+    );
+
+
+  els.authModal =
+    document.getElementById(
+      "authModal"
+    );
+
+  els.closeAuthButton =
+    document.getElementById(
+      "closeAuthButton"
+    );
+
+  els.authEmail =
+    document.getElementById(
+      "authEmail"
+    );
+
+  els.authPassword =
+    document.getElementById(
+      "authPassword"
+    );
+
+  els.loginButton =
+    document.getElementById(
+      "loginButton"
+    );
+
+  els.signupButton =
+    document.getElementById(
+      "signupButton"
+    );
+
+  els.authMessage =
+    document.getElementById(
+      "authMessage"
+    );
+
+
+  els.databaseStatus =
+    document.getElementById(
+      "databaseStatus"
+    );
+
+  els.toast =
+    document.getElementById(
+      "toast"
+    );
+}
+
+
+/* ==================================================
+   EVENTS
+   ================================================== */
+
+function bindEvents() {
+
+  els.themeToggle.addEventListener(
+    "click",
+    toggleTheme
+  );
+
+
+  els.fontMinus.addEventListener(
+    "click",
+    () =>
+      changeFontSize(-1)
+  );
+
+  els.fontPlus.addEventListener(
+    "click",
+    () =>
+      changeFontSize(1)
+  );
+
+
+  els.speedMinus.addEventListener(
+    "click",
+    () =>
+      changeGlobalSpeed(-1)
+  );
+
+  els.speedPlus.addEventListener(
+    "click",
+    () =>
+      changeGlobalSpeed(1)
+  );
+
+  els.applySpeedAll.addEventListener(
+    "click",
+    applySpeedToAll
+  );
+
+
+  els.playButton.addEventListener(
+    "click",
+    play
+  );
+
+  els.pauseButton.addEventListener(
+    "click",
+    pause
+  );
+
+  els.resetButton.addEventListener(
+    "click",
+    reset
+  );
+
+
+  els.prevSongButton.addEventListener(
+    "click",
+    () =>
+      goToSong(
+        currentSongIndex - 1
+      )
+  );
+
+  els.nextSongButton.addEventListener(
+    "click",
+    () =>
+      goToSong(
+        currentSongIndex + 1
+      )
+  );
+
+
+  els.createProgramButton.addEventListener(
+    "click",
+    createProgram
+  );
+
+
+  els.saveProgramButton.addEventListener(
+    "click",
+    saveProgram
+  );
+
+
+  els.deleteProgramButton.addEventListener(
+    "click",
+    deleteCurrentProgram
+  );
+
+
+  els.addSongButton.addEventListener(
+    "click",
+    addSong
+  );
+
+
+  els.authButton.addEventListener(
+    "click",
+    openAuthModal
+  );
+
+  els.logoutButton.addEventListener(
+    "click",
+    logout
+  );
+
+
+  els.closeAuthButton.addEventListener(
+    "click",
+    closeAuthModal
+  );
+
+
+  document
+    .querySelector(
+      "[data-close-auth]"
+    )
+    .addEventListener(
+      "click",
+      closeAuthModal
+    );
+
+
+  els.loginButton.addEventListener(
+    "click",
+    login
+  );
+
+  els.signupButton.addEventListener(
+    "click",
+    signup
+  );
+
+
+  document.addEventListener(
+    "keydown",
+    handleKeyboard
+  );
+
+
+  window.addEventListener(
+    "resize",
+    createEndSpacer
+  );
+
+
+  supabaseClient.auth.onAuthStateChange(
+    (_event, session) => {
+
+      currentUser =
+        session?.user || null;
+
+      updateUI();
+
+      renderProgramList();
+
+      renderEditors();
+
+    }
+  );
+}
+
+
+/* ==================================================
+   AUTH
+   ================================================== */
+
+async function checkSession() {
+
+  setStatus(
+    "Подключение...",
+    "neutral"
+  );
+
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient.auth.getSession();
+
+
+  if (error) {
+
+    console.error(error);
+
+    setStatus(
+      "Ошибка подключения",
+      "error"
+    );
+
+    return;
+  }
+
+
+  currentUser =
+    data.session?.user || null;
+
+
+  setStatus(
+    "База подключена",
+    "online"
+  );
+}
+
+
+/* =========================
+   LOGIN
+   ========================= */
+
+async function login() {
+
+  const email =
+    els.authEmail.value.trim();
+
+  const password =
+    els.authPassword.value;
+
+
+  if (
+    !email ||
+    !password
+  ) {
+
+    els.authMessage.textContent =
+      "Введите email и пароль.";
+
+    return;
+  }
+
+
+  setAuthLoading(true);
+
+
+  els.authMessage.textContent =
+    "Выполняется вход...";
+
+
+  const {
+    error
+  } =
+    await supabaseClient.auth
+      .signInWithPassword({
+        email,
+        password
+      });
+
+
+  setAuthLoading(false);
+
+
+  if (error) {
+
+    console.error(error);
+
+    els.authMessage.textContent =
+      error.message;
+
+    return;
+  }
+
+
+  closeAuthModal();
+
+
+  showToast(
+    "Вы вошли в систему."
+  );
+
+
+  await loadPrograms();
+
+  updateUI();
+}
+
+
+/* =========================
+   SIGN UP
+   ========================= */
+
+async function signup() {
+
+  const email =
+    els.authEmail.value.trim();
+
+  const password =
+    els.authPassword.value;
+
+
+  if (
+    !email ||
+    !password
+  ) {
+
+    els.authMessage.textContent =
+      "Введите email и пароль.";
+
+    return;
+  }
+
+
+  if (
+    password.length < 6
+  ) {
+
+    els.authMessage.textContent =
+      "Пароль должен содержать минимум 6 символов.";
+
+    return;
+  }
+
+
+  setAuthLoading(true);
+
+
+  els.authMessage.textContent =
+    "Создание аккаунта...";
+
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient.auth
+      .signUp({
+        email,
+        password
+      });
+
+
+  setAuthLoading(false);
+
+
+  if (error) {
+
+    console.error(error);
+
+    els.authMessage.textContent =
+      error.message;
+
+    return;
+  }
+
+
+  if (data.session) {
+
+    closeAuthModal();
+
+    currentUser =
+      data.session.user;
+
+    showToast(
+      "Аккаунт создан."
+    );
+
+  } else {
+
+    els.authMessage.textContent =
+      "Аккаунт создан. Проверьте почту и подтвердите email.";
+
+  }
+}
+
+
+/* =========================
+   LOGOUT
+   ========================= */
+
+async function logout() {
+
+  pause();
+
+
+  const {
+    error
+  } =
+    await supabaseClient.auth.signOut();
+
+
+  if (error) {
+
+    showToast(
+      "Ошибка выхода: " +
+        error.message
+    );
+
+    return;
+  }
+
+
+  currentUser = null;
+
+  updateUI();
+
+  renderEditors();
+
+  showToast(
+    "Вы вышли."
+  );
+}
+
+
+/* =========================
+   AUTH MODAL
+   ========================= */
+
+function openAuthModal() {
+
+  els.authMessage.textContent =
+    "";
+
+  els.authModal.classList.remove(
+    "hidden"
+  );
+
+  els.authModal.setAttribute(
+    "aria-hidden",
+    "false"
+  );
+
+  setTimeout(
+    () =>
+      els.authEmail.focus(),
+    50
+  );
+}
+
+
+function closeAuthModal() {
+
+  els.authModal.classList.add(
+    "hidden"
+  );
+
+  els.authModal.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+}
+
+
+function setAuthLoading(
+  loading
+) {
+
+  els.loginButton.disabled =
+    loading;
+
+  els.signupButton.disabled =
+    loading;
+}
+
+
+/* ==================================================
+   PROGRAMS
+   ================================================== */
+
+async function loadPrograms() {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("programs")
+      .select(
+        "id, title, service_date, created_at, updated_at"
+      )
+      .order(
+        "service_date",
+        {
+          ascending: false,
+          nullsFirst: false
+        }
+      )
+      .order(
+        "created_at",
+        {
+          ascending: false
+        }
+      );
+
+
+  if (error) {
+
+    console.error(error);
+
+    setStatus(
+      "Ошибка базы",
+      "error"
+    );
+
+    showToast(
+      "Не удалось загрузить программы: " +
+        error.message
+    );
+
+    programs = [];
+
+    return;
+  }
+
+
+  programs =
+    data || [];
+
+
+  setStatus(
+    "База подключена",
+    "online"
+  );
+
+
+  renderProgramList();
+}
+
+
+/* =========================
+   URL PROGRAM
+   ========================= */
+
+async function loadProgramFromUrl() {
+
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+
+  const programId =
+    params.get(
+      "program"
+    );
+
+
+  if (
+    programId
+  ) {
+
+    const program =
+      programs.find(
+        item =>
+          item.id ===
+          programId
+      );
+
+
+    if (program) {
+
+      await openProgram(
+        program.id,
+        false
+      );
+
+      return;
+    }
+
+
+    showToast(
+      "Программа не найдена."
+    );
+
+    return;
+  }
+
+
+  if (
+    programs.length
+  ) {
+
+    await openProgram(
+      programs[0].id,
+      false
+    );
+
+  } else {
+
+    renderEmptyProgram();
+
+  }
+}
+
+
+/* =========================
+   OPEN PROGRAM
+   ========================= */
+
+async function openProgram(
+  programId,
+  updateUrl = true
+) {
+
+  const program =
+    programs.find(
+      item =>
+        item.id ===
+        programId
+    );
+
+
+  if (!program) {
+    return;
+  }
+
+
+  pause();
+
+
+  currentProgram =
+    program;
+
+
+  if (updateUrl) {
+
+    const url =
+      new URL(
+        window.location.href
+      );
+
+    url.searchParams.set(
+      "program",
+      program.id
+    );
+
+    window.history.pushState(
+      {},
+      "",
+      url
+    );
+  }
+
+
+  await loadSongsForProgram(
+    program.id
+  );
+
+
+  currentSongIndex =
+    0;
+
+
+  renderProgram();
+
+  renderEditors();
+
+  updateProgramHeader();
+
+  updateUI();
+
+
+  window.scrollTo({
+    top: 0,
+    behavior: "auto"
+  });
+}
+
+
+/* =========================
+   LOAD PROGRAM SONGS
+   ========================= */
+
+async function loadSongsForProgram(
+  programId
+) {
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("program_songs")
+      .select(
+        `
+        id,
+        position,
+        song_id,
+        songs (
+          id,
+          title,
+          text,
+          speed,
+          created_at,
+          updated_at
+        )
+        `
+      )
+      .eq(
+        "program_id",
+        programId
+      )
+      .order(
+        "position",
+        {
+          ascending: true
+        }
+      );
+
+
+  if (error) {
+
+    console.error(error);
+
+    showToast(
+      "Не удалось загрузить песни: " +
+        error.message
+    );
 
     songs = [];
 
     return;
+  }
 
+
+  songs =
+    (data || [])
+      .map(
+        item => {
+
+          const song =
+            item.songs;
+
+          if (!song) {
+            return null;
+          }
+
+          return {
+
+            id: song.id,
+
+            title:
+              song.title,
+
+            text:
+              song.text || "",
+
+            speed:
+              clamp(
+                Number(
+                  song.speed
+                ) ||
+                  DEFAULT_SPEED,
+
+                MIN_SPEED,
+
+                MAX_SPEED
+              ),
+
+            programSongId:
+              item.id,
+
+            position:
+              item.position
+
+          };
+
+        }
+      )
+      .filter(Boolean);
+
+
+  if (
+    songs.length
+  ) {
+
+    globalSpeed =
+      songs[0].speed;
+
+  }
+}
+
+
+/* ==================================================
+   CREATE PROGRAM
+   ================================================== */
+
+async function createProgram() {
+
+  if (!currentUser) {
+
+    openAuthModal();
+
+    return;
+  }
+
+
+  const title =
+    prompt(
+      "Название нового служения:",
+      "Восхваление"
+    );
+
+
+  if (
+    !title ||
+    !title.trim()
+  ) {
+
+    return;
+  }
+
+
+  const {
+    data,
+    error
+  } =
+    await supabaseClient
+      .from("programs")
+      .insert({
+        title:
+          title.trim(),
+
+        service_date:
+          null
+      })
+      .select()
+      .single();
+
+
+  if (error) {
+
+    console.error(error);
+
+    showToast(
+      "Не удалось создать программу: " +
+        error.message
+    );
+
+    return;
+  }
+
+
+  programs.unshift(
+    data
+  );
+
+
+  await openProgram(
+    data.id,
+    true
+  );
+
+
+  showToast(
+    "Программа создана."
+  );
+}
+
+
+/* ==================================================
+   SAVE PROGRAM
+   ================================================== */
+
+async function saveProgram() {
+
+  if (
+    !currentUser ||
+    !currentProgram
+  ) {
+
+    return;
+  }
+
+
+  const title =
+    els.programNameInput.value.trim();
+
+  const date =
+    els.programDateInput.value ||
+    null;
+
+
+  if (!title) {
+
+    showToast(
+      "Введите название служения."
+    );
+
+    return;
+  }
+
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from("programs")
+      .update({
+
+        title:
+          title,
+
+        service_date:
+          date,
+
+        updated_at:
+          new Date().toISOString()
+
+      })
+      .eq(
+        "id",
+        currentProgram.id
+      );
+
+
+  if (error) {
+
+    console.error(error);
+
+    showToast(
+      "Не удалось сохранить программу: " +
+        error.message
+    );
+
+    return;
+  }
+
+
+  currentProgram.title =
+    title;
+
+  currentProgram.service_date =
+    date;
+
+
+  const index =
+    programs.findIndex(
+      item =>
+        item.id ===
+        currentProgram.id
+    );
+
+
+  if (
+    index !== -1
+  ) {
+
+    programs[index] =
+      currentProgram;
+
+  }
+
+
+  updateProgramHeader();
+
+  renderProgramList();
+
+  showToast(
+    "Программа сохранена."
+  );
+}
+
+
+/* ==================================================
+   DELETE PROGRAM
+   ================================================== */
+
+async function deleteCurrentProgram() {
+
+  if (
+    !currentUser ||
+    !currentProgram
+  ) {
+
+    return;
+  }
+
+
+  const confirmed =
+    confirm(
+      `Удалить программу «${currentProgram.title}»?`
+    );
+
+
+  if (!confirmed) {
+    return;
+  }
+
+
+  const programId =
+    currentProgram.id;
+
+
+  const {
+    error
+  } =
+    await supabaseClient
+      .from("programs")
+      .delete()
+      .eq(
+        "id",
+        programId
+      );
+
+
+  if (error) {
+
+    console.error(error);
+
+    showToast(
+      "Не удалось удалить программу: " +
+        error.message
+    );
+
+    return;
+  }
+
+
+  programs =
+    programs.filter(
+      item =>
+        item.id !==
+        programId
+    );
+
+
+  currentProgram =
+    null;
+
+  songs = [];
+
+  pause();
+
+
+  const url =
+    new URL(
+      window.location.href
+    );
+
+  url.searchParams.delete(
+    "program"
+  );
+
+  window.history.pushState(
+    {},
+    "",
+    url
+  );
+
+
+  if (
+    programs.length
+  ) {
+
+    await openProgram(
+      programs[0].id,
+      true
+    );
+
+  } else {
+
+    renderEmptyProgram();
+
+  }
+
+
+  renderProgramList();
+
+  showToast(
+    "Программа удалена."
+  );
+}
+
+
+/* ==================================================
+   PROGRAM LIST
+   ================================================== */
+
+function renderProgramList() {
+
+  if (!els.programList) {
+    return;
+  }
+
+
+  if (
+    !programs.length
+  ) {
+
+    els.programList.innerHTML =
+      "";
+
+    els.noPrograms.classList.remove(
+      "hidden"
+    );
+
+    return;
+  }
+
+
+  els.noPrograms.classList.add(
+    "hidden"
+  );
+
+
+  els.programList.innerHTML =
+    programs
+      .map(
+        program => {
+
+          const active =
+            currentProgram &&
+            currentProgram.id ===
+              program.id;
+
+
+          return `
+
+            <article
+              class="program-card ${
+                active
+                  ? "active"
+                  : ""
+              }"
+            >
+
+              <div
+                class="program-card-main"
+              >
+
+                <h3
+                  class="program-card-title"
+                >
+                  ${escapeHtml(
+                    program.title
+                  )}
+                </h3>
+
+
+                ${
+                  program.service_date
+                    ? `
+                      <div
+                        class="program-card-date"
+                      >
+                        ${formatDate(
+                          program.service_date
+                        )}
+                      </div>
+                    `
+                    : ""
+                }
+
+              </div>
+
+
+              <div
+                class="program-card-actions"
+              >
+
+                <button
+                  class="program-open-button"
+                  data-program-open="${
+                    program.id
+                  }"
+                >
+                  Открыть
+                </button>
+
+
+                <button
+                  class="program-copy-button"
+                  data-program-copy="${
+                    program.id
+                  }"
+                >
+                  Ссылка
+                </button>
+
+              </div>
+
+            </article>
+
+          `;
+
+        }
+      )
+      .join("");
+
+
+  els.programList
+    .querySelectorAll(
+      "[data-program-open]"
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          "click",
+          () =>
+            openProgram(
+              button.dataset.programOpen,
+              true
+            )
+        );
+
+      }
+    );
+
+
+  els.programList
+    .querySelectorAll(
+      "[data-program-copy]"
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          "click",
+          () =>
+            copyProgramLink(
+              button.dataset.programCopy
+            )
+        );
+
+      }
+    );
+}
+
+
+/* =========================
+   COPY PROGRAM LINK
+   ========================= */
+
+async function copyProgramLink(
+  programId
+) {
+
+  const url =
+    new URL(
+      window.location.href
+    );
+
+
+  url.searchParams.set(
+    "program",
+    programId
+  );
+
+
+  try {
+
+    await navigator.clipboard.writeText(
+      url.toString()
+    );
+
+    showToast(
+      "Ссылка скопирована."
+    );
+
+  } catch {
+
+    prompt(
+      "Скопируйте ссылку:",
+      url.toString()
+    );
+
+  }
+}
+
+
+/* ==================================================
+   SONG CRUD
+   ================================================== */
+
+async function addSong() {
+
+  if (
+    !currentUser ||
+    !currentProgram
+  ) {
+
+    openAuthModal();
+
+    return;
+  }
+
+
+  const title =
+    `Новая песня ${
+      songs.length + 1
+    }`;
+
+
+  const {
+    data: song,
+    error
+  } =
+    await supabaseClient
+      .from("songs")
+      .insert({
+
+        title:
+          title,
+
+        text:
+          "",
+
+        speed:
+          globalSpeed
+
+      })
+      .select()
+      .single();
+
+
+  if (error) {
+
+    console.error(error);
+
+    showToast(
+      "Не удалось создать песню: " +
+        error.message
+    );
+
+    return;
+  }
+
+
+  const position =
+    songs.length;
+
+
+  const {
+    data: relation,
+    error:
+      relationError
+  } =
+    await supabaseClient
+      .from("program_songs")
+      .insert({
+
+        program_id:
+          currentProgram.id,
+
+        song_id:
+          song.id,
+
+        position:
+          position
+
+      })
+      .select()
+      .single();
+
+
+  if (
+    relationError
+  ) {
+
+    console.error(
+      relationError
+    );
+
+
+    await supabaseClient
+      .from("songs")
+      .delete()
+      .eq(
+        "id",
+        song.id
+      );
+
+
+    showToast(
+      "Не удалось добавить песню в программу."
+    );
+
+    return;
+  }
+
+
+  songs.push({
+
+    id:
+      song.id,
+
+    title:
+      song.title,
+
+    text:
+      song.text || "",
+
+    speed:
+      Number(
+        song.speed
+      ) ||
+      DEFAULT_SPEED,
+
+    programSongId:
+      relation.id,
+
+    position:
+      position
+
+  });
+
+
+  renderProgram();
+
+  renderEditors();
+
+  updateUI();
+
+
+  showToast(
+    "Песня добавлена."
+  );
+}
+
+
+/* =========================
+   DELETE SONG
+   ========================= */
+
+async function deleteSong(
+  songId
+) {
+
+  if (
+    !currentUser ||
+    !currentProgram
+  ) {
+
+    return;
+  }
+
+
+  const song =
+    songs.find(
+      item =>
+        item.id ===
+        songId
+    );
+
+
+  if (!song) {
+    return;
+  }
+
+
+  if (
+    !confirm(
+      `Удалить песню «${song.title}» из этой программы?`
+    )
+  ) {
+
+    return;
+  }
+
+
+  const {
+    error:
+      relationError
+  } =
+    await supabaseClient
+      .from("program_songs")
+      .delete()
+      .eq(
+        "id",
+        song.programSongId
+      );
+
+
+  if (
+    relationError
+  ) {
+
+    console.error(
+      relationError
+    );
+
+    showToast(
+      "Не удалось удалить песню из программы."
+    );
+
+    return;
+  }
+
+
+  const {
+    error:
+      songError
+  } =
+    await supabaseClient
+      .from("songs")
+      .delete()
+      .eq(
+        "id",
+        songId
+      );
+
+
+  if (
+    songError
+  ) {
+
+    console.error(
+      songError
+    );
+
+    showToast(
+      "Песня убрана из программы, но не удалена из базы."
+    );
+
+  }
+
+
+  songs =
+    songs.filter(
+      item =>
+        item.id !==
+        songId
+    );
+
+
+  songs.forEach(
+    (
+      item,
+      index
+    ) => {
+
+      item.position =
+        index;
+
+    }
+  );
+
+
+  await saveSongPositions();
+
+
+  currentSongIndex =
+    Math.min(
+      currentSongIndex,
+      Math.max(
+        0,
+        songs.length - 1
+      )
+    );
+
+
+  renderProgram();
+
+  renderEditors();
+
+  updateUI();
+
+
+  showToast(
+    "Песня удалена."
+  );
+}
+
+
+/* =========================
+   SAVE POSITIONS
+   ========================= */
+
+async function saveSongPositions() {
+
+  for (
+    const song of songs
+  ) {
+
+    await supabaseClient
+      .from("program_songs")
+      .update({
+        position:
+          song.position
+      })
+      .eq(
+        "id",
+        song.programSongId
+      );
+
+  }
+}
+
+
+/* ==================================================
+   SONG EDITOR
+   ================================================== */
+
+function renderEditors() {
+
+  if (
+    !currentUser ||
+    !currentProgram
+  ) {
+
+    els.songEditors.innerHTML =
+      "";
+
+    els.addSongButton.classList.add(
+      "hidden"
+    );
+
+    els.programEditor.classList.add(
+      "hidden"
+    );
+
+    return;
+  }
+
+
+  els.addSongButton.classList.remove(
+    "hidden"
+  );
+
+  els.programEditor.classList.remove(
+    "hidden"
+  );
+
+
+  els.programNameInput.value =
+    currentProgram.title ||
+    "";
+
+
+  els.programDateInput.value =
+    currentProgram.service_date ||
+    "";
+
+
+  els.songEditors.innerHTML =
+    songs
+      .map(
+        (
+          song,
+          index
+        ) => `
+
+          <article
+            class="editor-card"
+            data-editor-id="${
+              song.id
+            }"
+          >
+
+            <div
+              class="editor-head"
+            >
+
+              <h3>
+                Песня ${
+                  String(
+                    index + 1
+                  ).padStart(
+                    2,
+                    "0"
+                  )
+                }
+              </h3>
+
+
+              <button
+                class="delete-button"
+                data-action="delete-song"
+                data-id="${
+                  song.id
+                }"
+              >
+                Удалить
+              </button>
+
+            </div>
+
+
+            <div
+              class="editor-field"
+            >
+
+              <label>
+                Название
+              </label>
+
+
+              <input
+                class="editor-input"
+                data-field="title"
+                data-id="${
+                  song.id
+                }"
+                type="text"
+                value="${
+                  escapeAttribute(
+                    song.title
+                  )
+                }"
+                placeholder="Название песни"
+              >
+
+            </div>
+
+
+            <div
+              class="editor-field"
+            >
+
+              <label>
+                Текст и аккорды
+              </label>
+
+
+              <textarea
+                class="editor-textarea"
+                data-field="text"
+                data-id="${
+                  song.id
+                }"
+                placeholder="Вставьте текст прямо из Word / Notes..."
+              >${
+                escapeHtml(
+                  song.text
+                )
+              }</textarea>
+
+            </div>
+
+
+            <div
+              class="editor-footer"
+            >
+
+              <div
+                class="editor-speed"
+              >
+
+                <span>
+                  Скорость
+                </span>
+
+
+                <button
+                  class="small-button"
+                  data-action="speed-minus"
+                  data-id="${
+                    song.id
+                  }"
+                >
+                  −
+                </button>
+
+
+                <input
+                  class="speed-input"
+                  data-field="speed"
+                  data-id="${
+                    song.id
+                  }"
+                  type="number"
+                  min="${MIN_SPEED}"
+                  max="${MAX_SPEED}"
+                  value="${
+                    song.speed
+                  }"
+                >
+
+
+                <button
+                  class="small-button"
+                  data-action="speed-plus"
+                  data-id="${
+                    song.id
+                  }"
+                >
+                  +
+                </button>
+
+
+                <span>
+                  px/с
+                </span>
+
+              </div>
+
+            </div>
+
+          </article>
+
+        `
+      )
+      .join("");
+
+
+  attachEditorEvents();
+}
+
+
+/* =========================
+   EDITOR EVENTS
+   ========================= */
+
+function attachEditorEvents() {
+
+  els.songEditors
+    .querySelectorAll(
+      "[data-field='title']"
+    )
+    .forEach(
+      input => {
+
+        input.addEventListener(
+          "change",
+          () =>
+            saveSongField(
+              input
+            )
+        );
+
+      }
+    );
+
+
+  els.songEditors
+    .querySelectorAll(
+      "[data-field='text']"
+    )
+    .forEach(
+      textarea => {
+
+        textarea.addEventListener(
+          "change",
+          () =>
+            saveSongField(
+              textarea
+            )
+        );
+
+      }
+    );
+
+
+  els.songEditors
+    .querySelectorAll(
+      "[data-field='speed']"
+    )
+    .forEach(
+      input => {
+
+        input.addEventListener(
+          "change",
+          () =>
+            saveSongField(
+              input
+            )
+        );
+
+      }
+    );
+
+
+  els.songEditors
+    .querySelectorAll(
+      "[data-action='delete-song']"
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          "click",
+          () =>
+            deleteSong(
+              button.dataset.id
+            )
+        );
+
+      }
+    );
+
+
+  els.songEditors
+    .querySelectorAll(
+      "[data-action='speed-minus']"
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          "click",
+          () =>
+            changeSongSpeed(
+              button.dataset.id,
+              -1
+            )
+        );
+
+      }
+    );
+
+
+  els.songEditors
+    .querySelectorAll(
+      "[data-action='speed-plus']"
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          "click",
+          () =>
+            changeSongSpeed(
+              button.dataset.id,
+              1
+            )
+        );
+
+      }
+    );
+}
+
+
+/* =========================
+   SAVE SONG FIELD
+   ========================= */
+
+async function saveSongField(
+  element
+) {
+
+  const id =
+    element.dataset.id;
+
+  const field =
+    element.dataset.field;
+
+
+  const song =
+    songs.find(
+      item =>
+        item.id ===
+        id
+    );
+
+
+  if (
+    !song ||
+    !currentUser
+  ) {
+
+    return;
+  }
+
+
+  let value =
+    element.value;
+
+
+  if (
+    field ===
+    "speed"
+  ) {
+
+    value =
+      clamp(
+        Number(
+          value
+        ) ||
+          DEFAULT_SPEED,
+
+        MIN_SPEED,
+
+        MAX_SPEED
+      );
+
+
+    element.value =
+      value;
+
+  }
+
+
+  song[field] =
+    value;
+
+
+  try {
+
+    await supabaseClient
+      .from("songs")
+      .update({
+
+        [field]:
+          value,
+
+        updated_at:
+          new Date().toISOString()
+
+      })
+      .eq(
+        "id",
+        song.id
+      );
+
+
+    renderProgram();
+
+    updateUI();
+
+    showToast(
+      "Сохранено."
+    );
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+    showToast(
+      "Ошибка сохранения."
+    );
+  }
+}
+
+
+/* =========================
+   CHANGE SONG SPEED
+   ========================= */
+
+async function changeSongSpeed(
+  id,
+  delta
+) {
+
+  const song =
+    songs.find(
+      item =>
+        item.id ===
+        id
+    );
+
+
+  if (
+    !song ||
+    !currentUser
+  ) {
+
+    return;
+  }
+
+
+  song.speed =
+    clamp(
+      song.speed + delta,
+
+      MIN_SPEED,
+
+      MAX_SPEED
+    );
+
+
+  try {
+
+    await supabaseClient
+      .from("songs")
+      .update({
+
+        speed:
+          song.speed,
+
+        updated_at:
+          new Date().toISOString()
+
+      })
+      .eq(
+        "id",
+        song.id
+      );
+
+
+    renderEditors();
+
+    renderProgram();
+
+    updateUI();
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+    showToast(
+      "Ошибка сохранения скорости."
+    );
+  }
+}
+
+
+/* ==================================================
+   RENDER PROGRAM
+   ================================================== */
+
+function renderProgram() {
+
+  if (
+    !currentProgram
+  ) {
+
+    renderEmptyProgram();
+
+    return;
+  }
+
+
+  if (
+    !songs.length
+  ) {
+
+    els.program.innerHTML = `
+
+      <div
+        class="empty-state"
+      >
+
+        <h2>
+          В этой программе пока нет песен
+        </h2>
+
+        <p>
+          ${
+            currentUser
+              ? "Добавьте первую песню ниже."
+              : "Войдите, чтобы добавить песни."
+          }
+        </p>
+
+      </div>
+
+    `;
+
+    els.songNavigation.classList.add(
+      "hidden"
+    );
+
+    createEndSpacer();
+
+    return;
+  }
+
+
+  els.songNavigation.classList.remove(
+    "hidden"
+  );
+
+
+  els.program.innerHTML =
+    songs
+      .map(
+        (
+          song,
+          index
+        ) => `
+
+          <section
+            class="song"
+            data-song-id="${
+              song.id
+            }"
+            data-song-index="${
+              index
+            }"
+          >
+
+            <header
+              class="song-header"
+            >
+
+              <div>
+
+                <div
+                  class="song-number"
+                >
+                  ${
+                    String(
+                      index + 1
+                    ).padStart(
+                      2,
+                      "0"
+                    )
+                  }
+                </div>
+
+
+                <h2
+                  class="song-title"
+                >
+                  ${
+                    escapeHtml(
+                      song.title ||
+                        "Без названия"
+                    )
+                  }
+                </h2>
+
+              </div>
+
+
+              <div
+                class="song-speed-badge"
+              >
+                ${
+                  song.speed
+                } px/с
+              </div>
+
+            </header>
+
+
+            <pre
+              class="lyrics-text"
+            >${
+              escapeHtml(
+                song.text ||
+                  ""
+              )
+            }</pre>
+
+          </section>
+
+        `
+      )
+      .join("");
+
+
+  createEndSpacer();
+
+  detectCurrentSong();
+
+  updateFontSize();
+
+  updateUI();
+}
+
+
+/* =========================
+   EMPTY PROGRAM
+   ========================= */
+
+function renderEmptyProgram() {
+
+  currentProgram =
+    null;
+
+  songs = [];
+
+  els.program.innerHTML = `
+
+    <div
+      class="empty-state"
+    >
+
+      <h2>
+        Выберите программу
+      </h2>
+
+      <p>
+      из списка выше.
+      </p>
+
+    </div>
+
+  `;
+
+
+  els.programEditor.classList.add(
+    "hidden"
+  );
+
+  els.songEditors.innerHTML =
+    "";
+
+  els.addSongButton.classList.add(
+    "hidden"
+  );
+
+  els.songNavigation.classList.add(
+    "hidden"
+  );
+
+
+  els.programTitle.textContent =
+    "Выберите программу";
+
+  els.programInfo.textContent =
+    "Создайте программу служения";
+}
+
+
+/* ==================================================
+   PROGRAM HEADER
+   ================================================== */
+
+function updateProgramHeader() {
+
+  if (
+    !currentProgram
+  ) {
+
+    return;
+  }
+
+
+  els.programTitle.textContent =
+    currentProgram.title;
+
+
+  els.programInfo.textContent =
+    currentProgram.service_date
+      ? formatDate(
+          currentProgram.service_date
+        )
+      : "Программа служения";
+}
+
+
+/* ==================================================
+   SCROLLING
+   ================================================== */
+
+function detectCurrentSong() {
+
+  if (
+    !songs.length
+  ) {
+
+    currentSongIndex =
+      0;
+
+    return null;
+  }
+
+
+  const elements =
+    document.querySelectorAll(
+      ".song"
+    );
+
+
+  let detected =
+    0;
+
+
+  for (
+    let i = 0;
+    i <
+      elements.length;
+    i++
+  ) {
+
+    const top =
+      elements[
+        i
+      ]
+        .getBoundingClientRect()
+        .top;
+
+
+    if (
+      top <=
+      SWITCH_LINE
+    ) {
+
+      detected =
+        i;
+
+    } else {
+
+      break;
+
+    }
+  }
+
+
+  currentSongIndex =
+    detected;
+
+
+  return elements[
+    detected
+  ];
+}
+
+
+function getCurrentSpeed() {
+
+  return (
+    songs[
+      currentSongIndex
+    ]?.speed ||
+    DEFAULT_SPEED
+  );
+}
+
+
+function hasProgramEnded() {
+
+  if (
+    !songs.length
+  ) {
+
+    return true;
+  }
+
+
+  const elements =
+    document.querySelectorAll(
+      ".song"
+    );
+
+
+  const lastSong =
+    elements[
+      elements.length - 1
+    ];
+
+
+  if (
+    !lastSong
+  ) {
+
+    return true;
+  }
+
+
+  return (
+    lastSong
+      .getBoundingClientRect()
+      .bottom <=
+    SWITCH_LINE
+  );
+}
+
+
+function scrollLoop(
+  timestamp
+) {
+
+  if (
+    !isPlaying
+  ) {
+
+    return;
+  }
+
+
+  if (
+    lastTimestamp ===
+    null
+  ) {
+
+    lastTimestamp =
+      timestamp;
+  }
+
+
+  const deltaTime =
+    Math.min(
+      (
+        timestamp -
+        lastTimestamp
+      ) / 1000,
+
+      0.05
+    );
+
+
+  lastTimestamp =
+    timestamp;
+
+
+  detectCurrentSong();
+
+
+  const speed =
+    getCurrentSpeed();
+
+
+  window.scrollBy(
+    0,
+    speed *
+      deltaTime
+  );
+
+
+  detectCurrentSong();
+
+
+  if (
+    hasProgramEnded()
+  ) {
+
+    pause();
+
+    return;
+  }
+
+
+  animationFrameId =
+    requestAnimationFrame(
+      scrollLoop
+    );
+}
+
+
+function play() {
+
+  if (
+    !songs.length
+  ) {
+
+    showToast(
+      "В программе нет песен."
+    );
+
+    return;
+  }
+
+
+  if (
+    isPlaying
+  ) {
+
+    return;
+  }
+
+
+  isPlaying =
+    true;
+
+  lastTimestamp =
+    null;
+
+
+  animationFrameId =
+    requestAnimationFrame(
+      scrollLoop
+    );
+
+
+  updateUI();
+}
+
+
+function pause() {
+
+  isPlaying =
+    false;
+
+  lastTimestamp =
+    null;
+
+
+  if (
+    animationFrameId !==
+    null
+  ) {
+
+    cancelAnimationFrame(
+      animationFrameId
+    );
+
+    animationFrameId =
+      null;
+  }
+
+
+  updateUI();
+}
+
+
+function reset() {
+
+  pause();
+
+
+  window.scrollTo({
+    top: 0,
+    behavior: "auto"
+  });
+
+
+  currentSongIndex =
+    0;
+
+
+  updateUI();
+}
+
+
+/* ==================================================
+   NAVIGATION
+   ================================================== */
+
+function goToSong(
+  index
+) {
+
+  if (
+    !songs.length
+  ) {
+
+    return;
+  }
+
+
+  const targetIndex =
+    clamp(
+      index,
+
+      0,
+
+      songs.length - 1
+    );
+
+
+  const elements =
+    document.querySelectorAll(
+      ".song"
+    );
+
+
+  const targetSong =
+    elements[
+      targetIndex
+    ];
+
+
+  if (
+    !targetSong
+  ) {
+
+    return;
+  }
+
+
+  currentSongIndex =
+    targetIndex;
+
+
+  const target =
+    targetSong
+      .getBoundingClientRect()
+      .top +
+    window.scrollY -
+    SWITCH_LINE;
+
+
+  const maxScroll =
+    document.documentElement
+      .scrollHeight -
+    window.innerHeight;
+
+
+  window.scrollTo({
+
+    top:
+      clamp(
+        target,
+
+        0,
+
+        Math.max(
+          0,
+          maxScroll
+        )
+      ),
+
+    behavior:
+      "smooth"
+
+  });
+
+
+  updateUI();
+}
+
+
+/* ==================================================
+   SPEED
+   ================================================== */
+
+function changeGlobalSpeed(
+  delta
+) {
+
+  globalSpeed =
+    clamp(
+      globalSpeed + delta,
+
+      MIN_SPEED,
+
+      MAX_SPEED
+    );
+
+
+  updateUI();
+}
+
+
+async function applySpeedToAll() {
+
+  if (
+    !songs.length
+  ) {
+
+    return;
+  }
+
+
+  if (
+    !currentUser ||
+    !currentProgram
+  ) {
+
+    openAuthModal();
+
+    return;
   }
 
 
   try {
 
-    const parsed =
-      JSON.parse(saved);
-
-
-    if (
-      Array.isArray(parsed)
+    for (
+      const song of songs
     ) {
 
-      songs = parsed;
+      song.speed =
+        globalSpeed;
 
-    } else {
 
-      songs = [];
+      await supabaseClient
+        .from("songs")
+        .update({
+
+          speed:
+            globalSpeed,
+
+          updated_at:
+            new Date().toISOString()
+
+        })
+        .eq(
+          "id",
+          song.id
+        );
 
     }
+
+
+    renderEditors();
+
+    renderProgram();
+
+    updateUI();
+
+
+    showToast(
+      "Скорость применена ко всем песням."
+    );
 
   } catch (error) {
 
     console.error(
-      "Ошибка загрузки песен:",
       error
     );
 
-    songs = [];
-
-  }
-
-}
-
-
-/* =========================================================
-   ADD SONG
-========================================================= */
-
-function addSong() {
-
-  songs.push(
-    createSongData(
-      `Песня ${songs.length + 1}`,
-      "",
-      DEFAULT_SPEED
-    )
-  );
-
-
-  saveSongs();
-
-  renderEditors();
-
-  renderProgram();
-
-
-  const editors =
-    document.querySelectorAll(
-      ".song-editor"
+    showToast(
+      "Не удалось сохранить скорость."
     );
-
-
-  const lastEditor =
-    editors[
-      editors.length - 1
-    ];
-
-
-  if (lastEditor) {
-
-    lastEditor.scrollIntoView({
-      behavior: "smooth",
-      block: "center"
-    });
-
   }
-
 }
 
 
-/* =========================================================
-   DELETE SONG
-========================================================= */
-
-function deleteSong(index) {
-
-  if (
-    !songs[index]
-  ) {
-
-    return;
-
-  }
-
-
-  const title =
-    songs[index].title ||
-    "Без названия";
-
-
-  if (
-    !confirm(
-      `Удалить песню «${title}»?`
-    )
-  ) {
-
-    return;
-
-  }
-
-
-  songs.splice(
-    index,
-    1
-  );
-
-
-  if (
-    currentSongIndex >=
-    songs.length
-  ) {
-
-    currentSongIndex =
-      Math.max(
-        0,
-        songs.length - 1
-      );
-
-  }
-
-
-  saveSongs();
-
-  renderEditors();
-
-  renderProgram();
-
-  updateUI();
-
-}
-
-
-/* =========================================================
-   RENDER EDITORS
-========================================================= */
-
-function renderEditors() {
-
-  songEditors.innerHTML = "";
-
-
-  if (!songs.length) {
-
-    const empty =
-      document.createElement(
-        "div"
-      );
-
-
-    empty.className =
-      "empty-state";
-
-
-    empty.innerHTML = `
-
-      <div
-        style="
-          font-size:40px;
-          margin-bottom:10px;
-        "
-      >
-        ＋
-      </div>
-
-      <div>
-        Добавьте первую песню
-      </div>
-
-    `;
-
-
-    songEditors.appendChild(
-      empty
-    );
-
-
-    return;
-
-  }
-
-
-  songs.forEach(
-    (song, index) => {
-
-      const editor =
-        document.createElement(
-          "div"
-        );
-
-
-      editor.className =
-        "song-editor";
-
-
-      editor.innerHTML = `
-
-        <div class="song-editor-top">
-
-          <div class="song-number">
-            ${String(index + 1).padStart(2, "0")}
-          </div>
-
-
-          <input
-            class="song-title-input"
-            type="text"
-            placeholder="Название песни"
-            data-index="${index}"
-          >
-
-
-          <button
-            class="delete-song-button"
-            title="Удалить песню"
-            data-delete="${index}"
-          >
-            ×
-          </button>
-
-        </div>
-
-
-        <textarea
-          class="song-text-input"
-          placeholder="Вставьте сюда текст песни вместе с аккордами..."
-          data-index="${index}"
-        ></textarea>
-
-
-        <div class="song-editor-bottom">
-
-          <div class="editor-hint">
-
-            Просто вставьте текст как есть.
-            Пробелы и переносы строк сохранятся.
-
-          </div>
-
-
-          <div class="song-speed-editor">
-
-            <span>
-              Скорость:
-            </span>
-
-
-            <button
-              class="small-button speed-minus"
-              data-index="${index}"
-            >
-              −
-            </button>
-
-
-            <input
-              class="song-speed-input"
-              type="number"
-              min="${MIN_SPEED}"
-              max="${MAX_SPEED}"
-              data-index="${index}"
-            >
-
-
-            <button
-              class="small-button speed-plus"
-              data-index="${index}"
-            >
-              +
-            </button>
-
-
-            <span>
-              px/s
-            </span>
-
-          </div>
-
-        </div>
-
-      `;
-
-
-      const titleInput =
-        editor.querySelector(
-          ".song-title-input"
-        );
-
-
-      titleInput.value =
-        song.title || "";
-
-
-      const textInput =
-        editor.querySelector(
-          ".song-text-input"
-        );
-
-
-      textInput.value =
-        song.text || "";
-
-
-      const speedInput =
-        editor.querySelector(
-          ".song-speed-input"
-        );
-
-
-      speedInput.value =
-        song.speed;
-
-
-      songEditors.appendChild(
-        editor
-      );
-
-    }
-  );
-
-
-  attachEditorEvents();
-
-}
-
-
-/* =========================================================
-   EDITOR EVENTS
-========================================================= */
-
-function attachEditorEvents() {
-
-
-  /* =========================
-     TITLE
-  ========================== */
-
-  document
-    .querySelectorAll(
-      ".song-title-input"
-    )
-    .forEach(input => {
-
-      input.addEventListener(
-        "input",
-        () => {
-
-          const index =
-            Number(
-              input.dataset.index
-            );
-
-
-          if (
-            !songs[index]
-          ) {
-
-            return;
-
-          }
-
-
-          songs[index].title =
-            input.value;
-
-
-          saveSongs();
-
-          renderProgram();
-
-        }
-      );
-
-    });
-
-
-  /* =========================
-     TEXT
-  ========================== */
-
-  document
-    .querySelectorAll(
-      ".song-text-input"
-    )
-    .forEach(textarea => {
-
-      textarea.addEventListener(
-        "input",
-        () => {
-
-          const index =
-            Number(
-              textarea.dataset.index
-            );
-
-
-          if (
-            !songs[index]
-          ) {
-
-            return;
-
-          }
-
-
-          /*
-             Сохраняем оригинальный
-             текст БЕЗ изменений.
-
-             Пробелы.
-             Табы.
-             Переносы.
-             Пустые строки.
-          */
-
-          songs[index].text =
-            textarea.value;
-
-
-          saveSongs();
-
-          renderProgram();
-
-        }
-      );
-
-    });
-
-
-  /* =========================
-     DELETE
-  ========================== */
-
-  document
-    .querySelectorAll(
-      "[data-delete]"
-    )
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          deleteSong(
-            Number(
-              button.dataset.delete
-            )
-          );
-
-        }
-      );
-
-    });
-
-
-  /* =========================
-     SPEED MINUS
-  ========================== */
-
-  document
-    .querySelectorAll(
-      ".speed-minus"
-    )
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const index =
-            Number(
-              button.dataset.index
-            );
-
-
-          setSongSpeed(
-            index,
-            songs[index].speed - 1
-          );
-
-        }
-      );
-
-    });
-
-
-  /* =========================
-     SPEED PLUS
-  ========================== */
-
-  document
-    .querySelectorAll(
-      ".speed-plus"
-    )
-    .forEach(button => {
-
-      button.addEventListener(
-        "click",
-        () => {
-
-          const index =
-            Number(
-              button.dataset.index
-            );
-
-
-          setSongSpeed(
-            index,
-            songs[index].speed + 1
-          );
-
-        }
-      );
-
-    });
-
-
-  /* =========================
-     SPEED INPUT
-  ========================== */
-
-  document
-    .querySelectorAll(
-      ".song-speed-input"
-    )
-    .forEach(input => {
-
-      input.addEventListener(
-        "change",
-        () => {
-
-          const index =
-            Number(
-              input.dataset.index
-            );
-
-
-          setSongSpeed(
-            index,
-            Number(
-              input.value
-            )
-          );
-
-        }
-      );
-
-    });
-
-}
-
-
-/* =========================================================
-   SET SONG SPEED
-========================================================= */
-
-function setSongSpeed(
-  index,
-  value
+/* ==================================================
+   FONT
+   ================================================== */
+
+function changeFontSize(
+  delta
 ) {
 
-  if (
-    !songs[index]
-  ) {
+  fontSize =
+    clamp(
+      fontSize + delta,
 
-    return;
+      MIN_FONT_SIZE,
 
-  }
-
-
-  value =
-    Math.max(
-      MIN_SPEED,
-      Math.min(
-        MAX_SPEED,
-        Number(value) ||
-        DEFAULT_SPEED
-      )
+      MAX_FONT_SIZE
     );
 
 
-  songs[index].speed =
-    value;
-
-
-  saveSongs();
-
-  renderEditors();
-
-  renderProgram();
-
-  updateUI();
-
-}
-
-
-/* =========================================================
-   RENDER SONG TEXT
-========================================================= */
-
-function renderSongText(text) {
-
-  if (!text) {
-
-    return `
-
-      <div class="empty-song">
-        Добавьте текст песни
-      </div>
-
-    `;
-
-  }
-
-
-  /*
-     PRE сохраняет исходные:
-
-     пробелы
-     табы
-     переносы
-     пустые строки
-  */
-
-  return `
-
-    <pre class="lyrics-text">${escapeHtml(text)}</pre>
-
-  `;
-
-}
-
-
-/* =========================================================
-   RENDER PROGRAM
-========================================================= */
-
-function renderProgram() {
-
-  program.innerHTML = "";
-
-
-  songs.forEach(
-    (song, index) => {
-
-      const section =
-        document.createElement(
-          "section"
-        );
-
-
-      section.className =
-        "song";
-
-
-      section.dataset.index =
-        index;
-
-
-      section.dataset.speed =
-        song.speed;
-
-
-      section.dataset.defaultSpeed =
-        song.speed;
-
-
-      section.dataset.songId =
-        song.id;
-
-
-      section.innerHTML = `
-
-        <div class="song-header">
-
-          <div class="song-number-display">
-            SONG ${String(index + 1).padStart(2, "0")}
-          </div>
-
-
-          <h2 class="song-title">
-            ${escapeHtml(
-              song.title ||
-              "Без названия"
-            )}
-          </h2>
-
-
-          <div class="song-speed-display">
-            Скорость: ${song.speed} px/s
-          </div>
-
-        </div>
-
-
-        <div class="lyrics">
-
-          ${renderSongText(
-            song.text
-          )}
-
-        </div>
-
-      `;
-
-
-      program.appendChild(
-        section
-      );
-
-    }
+  localStorage.setItem(
+    FONT_STORAGE_KEY,
+    fontSize
   );
 
 
-  createEndSpacer();
-
-  updateUI();
-
+  updateFontSize();
 }
 
 
-/* =========================================================
+function updateFontSize() {
+
+  document.documentElement.style.setProperty(
+    "--lyrics-font-size",
+
+    `${fontSize}px`
+  );
+
+
+  document
+    .querySelectorAll(
+      ".lyrics-text"
+    )
+    .forEach(
+      element => {
+
+        element.style.fontSize =
+          `${fontSize}px`;
+
+      }
+    );
+
+
+  if (
+    els.fontSizeValue
+  ) {
+
+    els.fontSizeValue.textContent =
+      `${fontSize} px`;
+
+  }
+}
+
+
+/* ==================================================
+   THEME
+   ================================================== */
+
+function applyTheme() {
+
+  const theme =
+    localStorage.getItem(
+      THEME_STORAGE_KEY
+    ) ||
+    "light";
+
+
+  const isDark =
+    theme ===
+    "dark";
+
+
+  document.body.classList.toggle(
+    "dark-theme",
+    isDark
+  );
+
+
+  if (
+    els.themeToggle
+  ) {
+
+    els.themeToggle.textContent =
+      isDark
+        ? "☀️"
+        : "🌙";
+  }
+}
+
+
+function toggleTheme() {
+
+  const isDark =
+    document.body.classList.toggle(
+      "dark-theme"
+    );
+
+
+  localStorage.setItem(
+    THEME_STORAGE_KEY,
+
+    isDark
+      ? "dark"
+      : "light"
+  );
+
+
+  els.themeToggle.textContent =
+    isDark
+      ? "☀️"
+      : "🌙";
+}
+
+
+/* ==================================================
+   UI
+   ================================================== */
+
+function updateUI() {
+
+  updateProgramHeader();
+
+  detectCurrentSong();
+
+
+  els.globalSpeedValue.textContent =
+    globalSpeed;
+
+
+  els.fontSizeValue.textContent =
+    `${fontSize} px`;
+
+
+  const count =
+    songs.length;
+
+
+  els.songCounter.textContent =
+    `${
+      String(
+        count
+          ? currentSongIndex + 1
+          : 0
+      ).padStart(
+        2,
+        "0"
+      )
+    } / ${
+      String(
+        count
+      ).padStart(
+        2,
+        "0"
+      )
+    }`;
+
+
+  els.prevSongButton.disabled =
+    currentSongIndex <= 0;
+
+
+  els.nextSongButton.disabled =
+    count === 0 ||
+    currentSongIndex >=
+      count - 1;
+
+
+  els.playButton.textContent =
+    isPlaying
+      ? "▶︎ Идёт"
+      : "▶︎ Начать";
+
+
+  if (
+    currentUser
+  ) {
+
+    els.authButton.classList.add(
+      "hidden"
+    );
+
+    els.logoutButton.classList.remove(
+      "hidden"
+    );
+
+    els.createProgramButton.classList.remove(
+      "hidden"
+    );
+
+  } else {
+
+    els.authButton.classList.remove(
+      "hidden"
+    );
+
+    els.logoutButton.classList.add(
+      "hidden"
+    );
+
+    els.createProgramButton.classList.add(
+      "hidden"
+    );
+  }
+
+
+  document
+    .querySelectorAll(
+      ".song"
+    )
+    .forEach(
+      (
+        element,
+        index
+      ) => {
+
+        element.classList.toggle(
+          "is-current",
+
+          index ===
+            currentSongIndex
+        );
+
+      }
+    );
+
+
+  updateFontSize();
+}
+
+
+/* ==================================================
+   STATUS
+   ================================================== */
+
+function setStatus(
+  text,
+  state
+) {
+
+  const dot =
+    document.querySelector(
+      ".connection-badge .status-dot"
+    );
+
+
+  if (
+    dot
+  ) {
+
+    dot.classList.remove(
+      "online",
+      "error"
+    );
+
+
+    if (
+      state ===
+      "online"
+    ) {
+
+      dot.classList.add(
+        "online"
+      );
+    }
+
+
+    if (
+      state ===
+      "error"
+    ) {
+
+      dot.classList.add(
+        "error"
+      );
+    }
+  }
+
+
+  if (
+    els.databaseStatus
+  ) {
+
+    els.databaseStatus.textContent =
+      state ===
+      "error"
+        ? "Ошибка Supabase"
+        : "Supabase";
+  }
+}
+
+
+/* ==================================================
    END SPACER
-========================================================= */
+   ================================================== */
 
 function createEndSpacer() {
 
-  const oldSpacer =
+  const old =
     document.querySelector(
       ".end-spacer"
     );
 
 
-  if (oldSpacer) {
+  if (
+    old
+  ) {
 
-    oldSpacer.remove();
+    old.remove();
+  }
 
+
+  if (
+    !songs.length
+  ) {
+
+    return;
   }
 
 
@@ -1045,876 +3450,192 @@ function createEndSpacer() {
 
 
   spacer.style.height =
-    `${window.innerHeight * END_PADDING_RATIO}px`;
+    `${
+      window.innerHeight *
+      END_PADDING_RATIO
+    }px`;
 
 
-  program.appendChild(
+  els.program.appendChild(
     spacer
   );
-
 }
 
 
-/* =========================================================
-   DETECT CURRENT SONG
-========================================================= */
+/* ==================================================
+   KEYBOARD
+   ================================================== */
 
-function detectCurrentSong() {
+function handleKeyboard(
+  event
+) {
 
-  if (!songs.length) {
-
-    currentSongIndex = 0;
-
-    return null;
-
-  }
+  const active =
+    document.activeElement;
 
 
-  const songElements =
-    document.querySelectorAll(
-      ".song"
+  const isTyping =
+    active &&
+    [
+      "INPUT",
+      "TEXTAREA",
+      "SELECT"
+    ].includes(
+      active.tagName
     );
 
 
-  let detected = 0;
-
-
-  for (
-    let i = 0;
-    i < songElements.length;
-    i++
+  if (
+    isTyping
   ) {
 
-    const top =
-      songElements[i]
-        .getBoundingClientRect()
-        .top;
-
-
-    if (
-      top <= SWITCH_LINE
-    ) {
-
-      detected = i;
-
-    } else {
-
-      break;
-
-    }
-
-  }
-
-
-  currentSongIndex =
-    detected;
-
-
-  return songElements[
-    detected
-  ];
-
-}
-
-
-/* =========================================================
-   GET CURRENT SPEED
-========================================================= */
-
-function getCurrentSpeed() {
-
-  if (!songs.length) {
-
-    return DEFAULT_SPEED;
-
-  }
-
-
-  return Number(
-    songs[
-      currentSongIndex
-    ]?.speed ||
-    DEFAULT_SPEED
-  );
-
-}
-
-
-/* =========================================================
-   PROGRAM END
-========================================================= */
-
-function hasProgramEnded() {
-
-  const songElements =
-    document.querySelectorAll(
-      ".song"
-    );
-
-
-  if (!songElements.length) {
-
-    return false;
-
-  }
-
-
-  const lastSong =
-    songElements[
-      songElements.length - 1
-    ];
-
-
-  const bottom =
-    lastSong
-      .getBoundingClientRect()
-      .bottom;
-
-
-  return (
-    bottom <= SWITCH_LINE
-  );
-
-}
-
-
-/* =========================================================
-   PLAY
-========================================================= */
-
-function play() {
-
-  if (!songs.length) {
-
-    statusElement.textContent =
-      "Добавьте песни";
-
     return;
-
   }
 
 
   if (
-    hasProgramEnded()
+    event.key ===
+    "ArrowLeft"
   ) {
 
-    window.scrollTo({
+    event.preventDefault();
 
-      top:
-        0,
-
-      behavior:
-        "auto"
-
-    });
-
-
-    currentSongIndex =
-      0;
-
-  }
-
-
-  isPlaying = true;
-
-  lastTimestamp = null;
-
-
-  statusElement.textContent =
-    "Воспроизведение";
-
-
-  cancelAnimationFrame(
-    animationFrame
-  );
-
-
-  animationFrame =
-    requestAnimationFrame(
-      scrollLoop
+    goToSong(
+      currentSongIndex - 1
     );
-
-}
-
-
-/* =========================================================
-   PAUSE
-========================================================= */
-
-function pause() {
-
-  isPlaying = false;
-
-
-  cancelAnimationFrame(
-    animationFrame
-  );
-
-
-  animationFrame = null;
-
-  lastTimestamp = null;
-
-
-  detectCurrentSong();
-
-  updateUI();
-
-
-  statusElement.textContent =
-    "Пауза";
-
-}
-
-
-/* =========================================================
-   RESET
-========================================================= */
-
-function reset() {
-
-  pause();
-
-
-  window.scrollTo({
-
-    top:
-      0,
-
-    behavior:
-      "auto"
-
-  });
-
-
-  currentSongIndex =
-    0;
-
-
-  statusElement.textContent =
-    "Готово";
-
-
-  updateUI();
-
-}
-
-
-/* =========================================================
-   SCROLL LOOP
-========================================================= */
-
-function scrollLoop(timestamp) {
-
-  if (!isPlaying) {
-
-    return;
-
   }
 
-
-  if (!lastTimestamp) {
-
-    lastTimestamp =
-      timestamp;
-
-  }
-
-
-  const deltaTime =
-    (
-      timestamp -
-      lastTimestamp
-    ) / 1000;
-
-
-  lastTimestamp =
-    timestamp;
-
-
-  /*
-     Определяем текущую песню.
-  */
-
-  detectCurrentSong();
-
-
-  /*
-     Получаем индивидуальную
-     скорость этой песни.
-  */
-
-  const speed =
-    getCurrentSpeed();
-
-
-  /*
-     Двигаем страницу.
-  */
-
-  window.scrollBy(
-    0,
-    speed * deltaTime
-  );
-
-
-  /*
-     Проверяем переход
-     на следующую песню.
-  */
-
-  detectCurrentSong();
-
-  updateUI();
-
-
-  /*
-     Проверяем конец программы.
-  */
 
   if (
-    hasProgramEnded()
+    event.key ===
+    "ArrowRight"
   ) {
 
-    isPlaying = false;
+    event.preventDefault();
 
-
-    cancelAnimationFrame(
-      animationFrame
-    );
-
-
-    animationFrame = null;
-
-
-    currentSongIndex =
-      songs.length - 1;
-
-
-    statusElement.textContent =
-      "Программа завершена";
-
-
-    updateUI();
-
-
-    return;
-
-  }
-
-
-  animationFrame =
-    requestAnimationFrame(
-      scrollLoop
-    );
-
-}
-
-
-/* =========================================================
-   NAVIGATION
-========================================================= */
-
-function goToSong(index) {
-
-  if (!songs.length) {
-
-    return;
-
-  }
-
-
-  index =
-    Math.max(
-      0,
-      Math.min(
-        songs.length - 1,
-        index
-      )
-    );
-
-
-  const songElements =
-    document.querySelectorAll(
-      ".song"
-    );
-
-
-  const song =
-    songElements[index];
-
-
-  if (!song) {
-
-    return;
-
-  }
-
-
-  const target =
-    song.getBoundingClientRect().top +
-    window.scrollY -
-    SWITCH_LINE;
-
-
-  const maxScroll =
-    document.documentElement
-      .scrollHeight -
-    window.innerHeight;
-
-
-  const finalPosition =
-    Math.max(
-      0,
-      Math.min(
-        target,
-        maxScroll
-      )
-    );
-
-
-  window.scrollTo({
-
-    top:
-      finalPosition,
-
-    behavior:
-      "smooth"
-
-  });
-
-
-  currentSongIndex =
-    index;
-
-
-  updateUI();
-
-}
-
-
-function previousSong() {
-
-  goToSong(
-    currentSongIndex - 1
-  );
-
-}
-
-
-function nextSong() {
-
-  goToSong(
-    currentSongIndex + 1
-  );
-
-}
-
-
-/* =========================================================
-   GLOBAL SPEED
-========================================================= */
-
-function changeGlobalSpeed(
-  amount
-) {
-
-  let value =
-    Number(
-      globalSpeedInput.value
-    ) ||
-    DEFAULT_SPEED;
-
-
-  value += amount;
-
-
-  value =
-    Math.max(
-      MIN_SPEED,
-      Math.min(
-        MAX_SPEED,
-        value
-      )
-    );
-
-
-  globalSpeedInput.value =
-    value;
-
-}
-
-
-/* =========================================================
-   APPLY SPEED TO ALL
-========================================================= */
-
-function applySpeedToAll() {
-
-  let speed =
-    Number(
-      globalSpeedInput.value
-    ) ||
-    DEFAULT_SPEED;
-
-
-  speed =
-    Math.max(
-      MIN_SPEED,
-      Math.min(
-        MAX_SPEED,
-        speed
-      )
-    );
-
-
-  songs.forEach(
-    song => {
-
-      song.speed =
-        speed;
-
-    }
-  );
-
-
-  saveSongs();
-
-  renderEditors();
-
-  renderProgram();
-
-
-  statusElement.textContent =
-    `Скорость ${speed} px/s применена ко всем`;
-
-}
-
-
-/* =========================================================
-   FONT SIZE
-========================================================= */
-
-function updateFontSize() {
-
-  document.documentElement
-    .style
-    .setProperty(
-      "--font-size",
-      `${fontSize}px`
-    );
-
-
-  fontSizeElement.textContent =
-    `${fontSize} px`;
-
-
-  localStorage.setItem(
-    FONT_STORAGE_KEY,
-    fontSize
-  );
-
-}
-
-
-function changeFontSize(
-  amount
-) {
-
-  fontSize += amount;
-
-
-  fontSize =
-    Math.max(
-      MIN_FONT_SIZE,
-      Math.min(
-        MAX_FONT_SIZE,
-        fontSize
-      )
-    );
-
-
-  updateFontSize();
-
-}
-
-
-/* =========================================================
-   UI
-========================================================= */
-
-function updateUI() {
-
-  if (!songs.length) {
-
-    songCounter.textContent =
-      "00 / 00";
-
-    return;
-
-  }
-
-
-  songCounter.textContent =
-    `${String(
+    goToSong(
       currentSongIndex + 1
-    ).padStart(2, "0")} / ${String(
-      songs.length
-    ).padStart(2, "0")}`;
-
+    );
+  }
 }
 
 
-/* =========================================================
-   ESCAPE HTML
-========================================================= */
+/* ==================================================
+   HELPERS
+   ================================================== */
 
-function escapeHtml(value) {
+function clamp(
+  value,
+  min,
+  max
+) {
 
-  return String(
-    value ?? ""
-  )
+  return Math.min(
+    max,
 
-    .replace(
-      /&/g,
+    Math.max(
+      min,
+      value
+    )
+  );
+}
+
+
+function escapeHtml(
+  value
+) {
+
+  return String(value)
+
+    .replaceAll(
+      "&",
       "&amp;"
     )
 
-    .replace(
-      /</g,
+    .replaceAll(
+      "<",
       "&lt;"
     )
 
-    .replace(
-      />/g,
+    .replaceAll(
+      ">",
       "&gt;"
     )
 
-    .replace(
-      /"/g,
+    .replaceAll(
+      '"',
       "&quot;"
     )
 
-    .replace(
-      /'/g,
+    .replaceAll(
+      "'",
       "&#039;"
     );
-
 }
 
 
-/* =========================================================
-   EVENTS
-========================================================= */
+function escapeAttribute(
+  value
+) {
+
+  return escapeHtml(
+    value
+  );
+}
 
 
-/* THEME */
+function formatDate(
+  date
+) {
 
-themeToggle.addEventListener(
-  "click",
-  toggleTheme
-);
-
-
-/* ADD SONG */
-
-addSongButton.addEventListener(
-  "click",
-  addSong
-);
-
-
-/* PLAY */
-
-playButton.addEventListener(
-  "click",
-  play
-);
-
-
-/* PAUSE */
-
-pauseButton.addEventListener(
-  "click",
-  pause
-);
-
-
-/* RESET */
-
-resetButton.addEventListener(
-  "click",
-  reset
-);
-
-
-/* PREVIOUS */
-
-prevSongButton.addEventListener(
-  "click",
-  previousSong
-);
-
-
-/* NEXT */
-
-nextSongButton.addEventListener(
-  "click",
-  nextSong
-);
-
-
-/* FONT MINUS */
-
-fontMinus.addEventListener(
-  "click",
-  () => {
-
-    changeFontSize(-1);
-
+  if (!date) {
+    return "";
   }
-);
 
 
-/* FONT PLUS */
+  const parts =
+    date.split("-");
 
-fontPlus.addEventListener(
-  "click",
-  () => {
 
-    changeFontSize(1);
+  if (
+    parts.length !== 3
+  ) {
 
+    return date;
   }
-);
 
 
-/* GLOBAL SPEED MINUS */
-
-globalSpeedMinus.addEventListener(
-  "click",
-  () => {
-
-    changeGlobalSpeed(-1);
-
-  }
-);
+  return `${parts[2]}.${parts[1]}.${parts[0]}`;
+}
 
 
-/* GLOBAL SPEED PLUS */
+function showToast(
+  message
+) {
 
-globalSpeedPlus.addEventListener(
-  "click",
-  () => {
-
-    changeGlobalSpeed(1);
-
-  }
-);
+  clearTimeout(
+    toastTimer
+  );
 
 
-/* APPLY ALL */
-
-applyAllButton.addEventListener(
-  "click",
-  applySpeedToAll
-);
+  els.toast.textContent =
+    message;
 
 
-/* =========================================================
-   KEYBOARD
-========================================================= */
-
-document.addEventListener(
-  "keydown",
-  event => {
-
-    const tag =
-      document.activeElement?.tagName;
+  els.toast.classList.add(
+    "show"
+  );
 
 
-    /*
-       Если пользователь печатает
-       песню — стрелки остаются
-       обычными стрелками.
-    */
+  toastTimer =
+    setTimeout(
+      () => {
 
-    if (
-      tag === "INPUT" ||
-      tag === "TEXTAREA"
-    ) {
+        els.toast.classList.remove(
+          "show"
+        );
 
-      return;
-
-    }
-
-
-    if (
-      event.key === "ArrowLeft"
-    ) {
-
-      previousSong();
-
-    }
-
-
-    if (
-      event.key === "ArrowRight"
-    ) {
-
-      nextSong();
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   SCROLL
-========================================================= */
-
-window.addEventListener(
-  "scroll",
-  () => {
-
-    if (!isPlaying) {
-
-      detectCurrentSong();
-
-      updateUI();
-
-    }
-
-  }
-);
-
-
-/* =========================================================
-   RESIZE
-========================================================= */
-
-window.addEventListener(
-  "resize",
-  () => {
-
-    createEndSpacer();
-
-  }
-);
-
-
-/* =========================================================
-   INIT
-========================================================= */
-
-applyTheme();
-
-loadSongs();
-
-updateFontSize();
-
-renderEditors();
-
-renderProgram();
-
-updateUI();
+      },
+      2500
+    );
+}

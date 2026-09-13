@@ -1685,3 +1685,90 @@ body[data-page="program"] .value-input::-webkit-outer-spin-button {
     padding-right: 2px;
   }
 }
+
+/* =========================================================
+   v9 — per-song viewer speeds + subpixel auto-scroll
+   ========================================================= */
+body[data-page="program"] .speed-more-button {
+  min-width: 34px;
+  padding: 0 7px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.song-speed-popover {
+  position: fixed;
+  z-index: 1200;
+  top: 116px;
+  right: 20px;
+  width: min(330px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.song-speed-popover.hidden {
+  display: none;
+}
+
+.song-speed-popover-title {
+  font-size: 13px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.song-speed-popover-song {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  margin-bottom: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.song-speed-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.song-speed-popover-row .value-input {
+  flex: 1;
+  width: auto;
+}
+
+.song-speed-popover-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.song-speed-popover-actions button {
+  min-height: 38px;
+}
+
+@media (max-width: 760px) {
+  body[data-page="program"] .speed-more-button {
+    min-width: 31px;
+    min-height: 36px;
+    padding: 0 5px;
+  }
+
+  .song-speed-popover {
+    top: 122px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}
+
+@media (max-width: 390px) {
+  .song-speed-popover {
+    top: 116px;
+  }
+}

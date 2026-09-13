@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>GRACE WORSHIP — SCROLL</title>
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body data-page="program">
 
@@ -38,8 +38,9 @@
         <span class="control-label">Скорость</span>
         <div class="control-buttons">
           <button id="speedMinus" class="small-button" aria-label="Уменьшить скорость">−</button>
-          <input id="globalSpeedInput" class="value-input" type="number" inputmode="numeric" min="1" max="100" step="1" value="60" aria-label="Скорость прокрутки в пикселях в секунду">
+          <input id="globalSpeedInput" class="value-input" type="number" inputmode="numeric" min="1" max="100" step="1" value="60" aria-label="Общая скорость прокрутки в пикселях в секунду">
           <button id="speedPlus" class="small-button" aria-label="Увеличить скорость">+</button>
+          <button id="songSpeedButton" class="small-button speed-more-button" type="button" aria-label="Скорость текущей песни" title="Скорость текущей песни">⋯</button>
           <button id="applySpeedAll" class="secondary-button compact">Применить ко всем</button>
         </div>
       </div>
@@ -52,6 +53,20 @@
       </div>
     </div>
   </header>
+
+  <div id="songSpeedPopover" class="song-speed-popover hidden" aria-hidden="true">
+    <div class="song-speed-popover-title">Скорость этой песни</div>
+    <div id="songSpeedPopoverSong" class="song-speed-popover-song">—</div>
+    <div class="song-speed-popover-row">
+      <button id="songSpeedMinus" class="small-button" type="button" aria-label="Уменьшить скорость песни">−</button>
+      <input id="songSpeedInput" class="value-input" type="number" inputmode="numeric" min="1" max="100" step="1" value="60" aria-label="Скорость текущей песни">
+      <button id="songSpeedPlus" class="small-button" type="button" aria-label="Увеличить скорость песни">+</button>
+    </div>
+    <div class="song-speed-popover-actions">
+      <button id="songSpeedSave" class="primary-button" type="button">Сохранить</button>
+      <button id="songSpeedReset" class="secondary-button" type="button">Общая</button>
+    </div>
+  </div>
 
   <main class="page program-page">
     <section class="program-hero">
@@ -111,6 +126,6 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=8"></script>
+  <script src="script.js?v=9"></script>
 </body>
 </html>

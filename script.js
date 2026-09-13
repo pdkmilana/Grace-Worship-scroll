@@ -20,6 +20,7 @@ const FONT_STORAGE_KEY = "worship-scroll-font-size";
 const THEME_STORAGE_KEY = "worship-scroll-theme";
 const VIEW_SPEED_KEY_PREFIX = "worship-scroll-view-speed:";
 const VIEW_APPLY_ALL_KEY_PREFIX = "worship-scroll-view-all:";
+const VIEW_SONG_SPEEDS_KEY_PREFIX = "worship-scroll-view-song-speeds:";
 const VIEW_SETTINGS_VERSION_KEY = "worship-scroll-view-settings-version";
 const VIEW_SETTINGS_VERSION = "8";
 
@@ -37,6 +38,7 @@ let songs = [];
 let currentSongIndex = 0;
 let globalSpeed = DEFAULT_SPEED;
 let viewerAllSpeed = null;
+let viewerSongSpeeds = {};
 let fontSize = Number(localStorage.getItem(FONT_STORAGE_KEY)) || 22;
 
 let isPlaying = false;
@@ -44,6 +46,8 @@ let animationFrameId = null;
 let lastTimestamp = null;
 let pausedScrollTop = null;
 let lastSongDetectionTimestamp = null;
+let autoScrollPosition = 0;
+let autoScrollFraction = 0;
 
 let currentUser = null;
 let toastTimer = null;
@@ -110,6 +114,14 @@ function cacheElements() {
     "globalSpeedValue",
     "globalSpeedInput",
     "applySpeedAll",
+    "songSpeedButton",
+    "songSpeedPopover",
+    "songSpeedPopoverSong",
+    "songSpeedInput",
+    "songSpeedMinus",
+    "songSpeedPlus",
+    "songSpeedSave",
+    "songSpeedReset",
     "playButton",
     "pauseButton",
     "resetButton",
@@ -973,23 +985,48 @@ function detectCurrentSong() {
 }
 
 function getCurrentSpeed() {
-  if (!songs.length) return DEFAULT_SPEED;
+  if (!songs.length) return globalSpeed;
 
   if (viewerAllSpeed !== null) {
     return viewerAllSpeed;
   }
 
-  const firstSpeed = songs[0]?.speed || DEFAULT_SPEED;
-  const currentStoredSpeed = songs[currentSongIndex]?.speed || DEFAULT_SPEED;
-  const offset = globalSpeed - firstSpeed;
+  const song = songs[currentSongIndex];
+  const customSpeed = song ? Number(viewerSongSpeeds[song.id]) : NaN;
 
-  return clamp(currentStoredSpeed + offset, MIN_SPEED, MAX_SPEED);
+  return Number.isFinite(customSpeed)
+    ? clamp(customSpeed, MIN_SPEED, MAX_SPEED)
+    : clamp(globalSpeed, MIN_SPEED, MAX_SPEED);
 }
 
 function hasProgramEnded() {
   const scroller = getScrollContainer();
   if (!songs.length || !scroller) return true;
   return scroller.scrollTop >= scroller.scrollHeight - scroller.clientHeight - 2;
+}
+
+function setAutoScrollFraction(fraction) {
+  const value = Math.max(0, Math.min(0.999999, fraction || 0));
+  autoScrollFraction = value;
+
+  const targets = [
+    document.querySelector("body[data-page=\"program\"] .program-page > .program-hero"),
+    document.getElementById("programScroll")
+  ];
+
+  const transform = value > 0.0001
+    ? `translate3d(0, ${-value}px, 0)`
+    : "";
+
+  targets.forEach(element => {
+    if (element) element.style.transform = transform;
+  });
+}
+
+function clearAutoScrollFraction() {
+  autoScrollFraction = 0;
+  document.querySelector("body[data-page=\"program\"] .program-page > .program-hero")?.style.removeProperty("transform");
+  document.getElementById("programScroll")?.style.removeProperty("transform");
 }
 
 function scrollLoop(timestamp) {
@@ -1003,21 +1040,31 @@ function scrollLoop(timestamp) {
 
   if (lastTimestamp === null) lastTimestamp = timestamp;
 
-  const deltaTime = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
+  const deltaTime = Math.min(Math.max((timestamp - lastTimestamp) / 1000, 0), 0.05);
   lastTimestamp = timestamp;
 
   const speed = getCurrentSpeed();
-  const before = window.scrollY || scroller.scrollTop || 0;
   const maxScroll = Math.max(0, scroller.scrollHeight - window.innerHeight);
-  const next = Math.min(before + speed * deltaTime, maxScroll);
 
-  // Keep the movement linear and deterministic. We intentionally use the
-  // instant document scroll API here; CSS smooth scrolling would fight the
-  // per-frame movement and can make lyrics look like they vibrate.
-  window.scrollTo(0, next);
+  autoScrollPosition = Math.min(
+    autoScrollPosition + speed * deltaTime,
+    maxScroll
+  );
 
-  // Current-song detection is intentionally throttled. Reading layout and
-  // repainting the current-song border every frame can cause text shimmer.
+  const integerPosition = Math.floor(autoScrollPosition);
+  const fraction = autoScrollPosition - integerPosition;
+
+  // Safari/iOS can quantize document scroll positions to whole CSS pixels.
+  // We move the document by whole pixels and use a compositor transform for
+  // the remaining fraction, so 1–59 px/s stays visually smooth instead of
+  // producing a tiny jump every few frames.
+  if (Math.abs((window.scrollY || scroller.scrollTop || 0) - integerPosition) >= 0.5) {
+    window.scrollTo(0, integerPosition);
+  } else if ((window.scrollY || scroller.scrollTop || 0) < integerPosition) {
+    window.scrollTo(0, integerPosition);
+  }
+  setAutoScrollFraction(fraction);
+
   if (
     lastSongDetectionTimestamp === null ||
     timestamp - lastSongDetectionTimestamp >= 80
@@ -1030,7 +1077,9 @@ function scrollLoop(timestamp) {
     }
   }
 
-  if (next >= maxScroll - 1) {
+  if (autoScrollPosition >= maxScroll - 0.5) {
+    window.scrollTo(0, maxScroll);
+    clearAutoScrollFraction();
     pause();
     return;
   }
@@ -1049,6 +1098,8 @@ function scrollToSongInstant(index) {
   const targetTop = Math.max(0, absoluteTop - getViewerHeaderOffset());
 
   window.scrollTo(0, targetTop);
+  autoScrollPosition = targetTop;
+  clearAutoScrollFraction();
   currentSongIndex = index;
   updateUI(false);
   return true;
@@ -1076,10 +1127,15 @@ function play() {
 
 function pause() {
   if (pageType === "program") {
-    pausedScrollTop = window.scrollY || getScrollContainer()?.scrollTop || 0;
+    pausedScrollTop = autoScrollPosition || window.scrollY || getScrollContainer()?.scrollTop || 0;
   }
 
   isPlaying = false;
+  if (pageType === "program") {
+    window.scrollTo(0, Math.round(pausedScrollTop || 0));
+    autoScrollPosition = Math.round(pausedScrollTop || 0);
+    clearAutoScrollFraction();
+  }
   lastTimestamp = null;
   lastSongDetectionTimestamp = null;
 
@@ -1103,6 +1159,8 @@ function continuePlayback() {
   const position = pausedScrollTop ?? window.scrollY ?? scroller?.scrollTop ?? 0;
 
   window.scrollTo(0, position);
+  autoScrollPosition = Number(position) || 0;
+  clearAutoScrollFraction();
   detectCurrentSong();
 
   isPlaying = true;
@@ -1138,7 +1196,9 @@ function goToSong(index) {
   const target = Math.max(0, absoluteTop - getViewerHeaderOffset());
 
   currentSongIndex = targetIndex;
-  scroller.scrollTo({ top: target, behavior: "smooth" });
+  window.scrollTo(0, target);
+  autoScrollPosition = target;
+  clearAutoScrollFraction();
   updateUI(false);
 }
 
@@ -1213,6 +1273,11 @@ function saveViewerSettings() {
     `${VIEW_APPLY_ALL_KEY_PREFIX}${currentProgram.id}`,
     viewerAllSpeed === null ? "" : String(viewerAllSpeed)
   );
+
+  localStorage.setItem(
+    `${VIEW_SONG_SPEEDS_KEY_PREFIX}${currentProgram.id}`,
+    JSON.stringify(viewerSongSpeeds)
+  );
 }
 
 function loadViewerSettings() {
@@ -1223,6 +1288,7 @@ function loadViewerSettings() {
     localStorage.setItem(VIEW_SETTINGS_VERSION_KEY, VIEW_SETTINGS_VERSION);
     localStorage.removeItem(`${VIEW_SPEED_KEY_PREFIX}${currentProgram.id}`);
     localStorage.removeItem(`${VIEW_APPLY_ALL_KEY_PREFIX}${currentProgram.id}`);
+    localStorage.removeItem(`${VIEW_SONG_SPEEDS_KEY_PREFIX}${currentProgram.id}`);
   }
 
   const savedSpeed = Number(
@@ -1239,6 +1305,13 @@ function loadViewerSettings() {
 
   viewerAllSpeed = savedAll ? clamp(Number(savedAll), MIN_SPEED, MAX_SPEED) : null;
 
+  try {
+    const rawSongSpeeds = localStorage.getItem(`${VIEW_SONG_SPEEDS_KEY_PREFIX}${currentProgram.id}`);
+    viewerSongSpeeds = rawSongSpeeds ? JSON.parse(rawSongSpeeds) || {} : {};
+  } catch {
+    viewerSongSpeeds = {};
+  }
+
   if (els.globalSpeedInput) els.globalSpeedInput.value = String(globalSpeed);
   if (els.fontSizeInput) els.fontSizeInput.value = String(fontSize);
 }
@@ -1247,9 +1320,68 @@ function applySpeedToAll() {
   if (!songs.length || pageType !== "program") return;
 
   viewerAllSpeed = globalSpeed;
+  viewerSongSpeeds = {};
   saveViewerSettings();
   updateUI();
   showToast(`Скорость ${globalSpeed} px/с применена ко всем песням.`);
+}
+
+function getCurrentSongCustomSpeed() {
+  const song = songs[currentSongIndex];
+  if (!song) return null;
+  const value = Number(viewerSongSpeeds[song.id]);
+  return Number.isFinite(value) ? clamp(value, MIN_SPEED, MAX_SPEED) : null;
+}
+
+function openSongSpeedPopover() {
+  if (!songs.length || pageType !== "program") return;
+
+  const song = songs[currentSongIndex];
+  const current = getCurrentSongCustomSpeed() ?? globalSpeed;
+
+  if (els.songSpeedPopoverSong) {
+    els.songSpeedPopoverSong.textContent = `${String(currentSongIndex + 1).padStart(2, "0")} — ${song.title || "Без названия"}`;
+  }
+  if (els.songSpeedInput) els.songSpeedInput.value = String(current);
+
+  els.songSpeedPopover?.classList.remove("hidden");
+  els.songSpeedPopover?.setAttribute("aria-hidden", "false");
+  setTimeout(() => els.songSpeedInput?.focus(), 30);
+}
+
+function closeSongSpeedPopover() {
+  els.songSpeedPopover?.classList.add("hidden");
+  els.songSpeedPopover?.setAttribute("aria-hidden", "true");
+}
+
+function setCurrentSongSpeed(value) {
+  if (!songs.length) return;
+  const song = songs[currentSongIndex];
+  const speed = clamp(Math.round(Number(value) || globalSpeed), MIN_SPEED, MAX_SPEED);
+
+  viewerSongSpeeds[song.id] = speed;
+  viewerAllSpeed = null;
+  saveViewerSettings();
+  if (els.songSpeedInput) els.songSpeedInput.value = String(speed);
+  updateUI(false);
+  showToast(`Для «${song.title || "песни"}» установлено ${speed} px/с.`);
+}
+
+function resetCurrentSongSpeed() {
+  if (!songs.length) return;
+  const song = songs[currentSongIndex];
+  delete viewerSongSpeeds[song.id];
+  viewerAllSpeed = null;
+  saveViewerSettings();
+  const speed = globalSpeed;
+  if (els.songSpeedInput) els.songSpeedInput.value = String(speed);
+  updateUI(false);
+  showToast(`Для «${song.title || "песни"}» используется общая скорость ${speed} px/с.`);
+}
+
+function changeCurrentSongSpeed(delta) {
+  const current = getCurrentSongCustomSpeed() ?? globalSpeed;
+  setCurrentSongSpeed(current + delta);
 }
 
 function setFontSize(value) {
@@ -1512,6 +1644,13 @@ function updateUI(renderFont = true) {
   detectCurrentSong();
 
   const count = songs.length;
+  const customCurrentSpeed = getCurrentSongCustomSpeed();
+  if (els.songSpeedInput && document.activeElement !== els.songSpeedInput) {
+    els.songSpeedInput.value = String(customCurrentSpeed ?? globalSpeed);
+  }
+  if (els.songSpeedPopoverSong && songs[currentSongIndex]) {
+    els.songSpeedPopoverSong.textContent = `${String(currentSongIndex + 1).padStart(2, "0")} — ${songs[currentSongIndex].title || "Без названия"}`;
+  }
 
   if (els.songCounter) {
     els.songCounter.textContent =
@@ -1572,6 +1711,12 @@ window.addEventListener("resize", () => {
 });
 
 document.addEventListener("keydown", handleKeyboard);
+document.addEventListener("pointerdown", event => {
+  if (pageType !== "program" || els.songSpeedPopover?.classList.contains("hidden")) return;
+  if (!els.songSpeedPopover?.contains(event.target) && event.target !== els.songSpeedButton) {
+    closeSongSpeedPopover();
+  }
+});
 
 /* =========================================================
    Helpers
@@ -1672,6 +1817,29 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
   els.applySpeedAll?.addEventListener("click", applySpeedToAll);
+
+  els.songSpeedButton?.addEventListener("click", openSongSpeedPopover);
+  els.songSpeedSave?.addEventListener("click", () => {
+    setCurrentSongSpeed(els.songSpeedInput?.value);
+    closeSongSpeedPopover();
+  });
+  els.songSpeedReset?.addEventListener("click", () => {
+    resetCurrentSongSpeed();
+    closeSongSpeedPopover();
+  });
+  els.songSpeedMinus?.addEventListener("click", () => changeCurrentSongSpeed(-1));
+  els.songSpeedPlus?.addEventListener("click", () => changeCurrentSongSpeed(1));
+  els.songSpeedInput?.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      setCurrentSongSpeed(els.songSpeedInput.value);
+      closeSongSpeedPopover();
+    }
+    if (event.key === "Escape") closeSongSpeedPopover();
+  });
+
+  bindLongPress(els.songSpeedMinus, () => changeCurrentSongSpeed(-1));
+  bindLongPress(els.songSpeedPlus, () => changeCurrentSongSpeed(1));
 
   bindLongPress(els.fontMinus, () => changeFontSize(-1));
   bindLongPress(els.fontPlus, () => changeFontSize(1));

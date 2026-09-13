@@ -1565,3 +1565,123 @@ body[data-page="program"] .program-hero {
     padding-right: 12px;
   }
 }
+
+/* =========================================================
+   v7.1 — home page overflow / desktop & zoom safety
+   ========================================================= */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.home-page,
+.programs-section,
+.program-list,
+.program-card,
+.program-card-main,
+.program-card-actions,
+.section-head {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.program-card {
+  flex-wrap: wrap;
+}
+
+.program-card-main {
+  flex: 1 1 260px;
+}
+
+.program-card-actions {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+  .section-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .program-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .program-card-main,
+  .program-card-actions {
+    width: 100%;
+  }
+
+  .program-card-actions {
+    justify-content: stretch;
+  }
+}
+
+/* =========================================================
+   v8 — precise controls + smoother viewer playback
+   ========================================================= */
+body[data-page="program"] .value-input {
+  width: 58px;
+  min-width: 58px;
+  height: 36px;
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: textfield;
+}
+
+body[data-page="program"] .value-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+body[data-page="program"] .value-input::-webkit-inner-spin-button,
+body[data-page="program"] .value-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  body[data-page="program"] .value-input {
+    width: 48px;
+    min-width: 48px;
+    height: 36px;
+    border-radius: 9px;
+    font-size: 12px;
+  }
+
+  body[data-page="program"] .playback {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  body[data-page="program"] .playback button {
+    min-width: 0;
+    white-space: nowrap;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 390px) {
+  body[data-page="program"] .value-input {
+    width: 44px;
+    min-width: 44px;
+    font-size: 11px;
+  }
+
+  body[data-page="program"] .playback button {
+    font-size: 9px;
+    padding-left: 2px;
+    padding-right: 2px;
+  }
+}

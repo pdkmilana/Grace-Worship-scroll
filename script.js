@@ -8,7 +8,7 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_KIhYKuei7TMvbKf0JGzwOA_JPpLb7lP
 
 const MIN_SPEED = 1;
 const MAX_SPEED = 100;
-const DEFAULT_SPEED = 18;
+const DEFAULT_SPEED = 60;
 
 const MIN_FONT_SIZE = 1;
 const MAX_FONT_SIZE = 60;
@@ -20,6 +20,8 @@ const FONT_STORAGE_KEY = "worship-scroll-font-size";
 const THEME_STORAGE_KEY = "worship-scroll-theme";
 const VIEW_SPEED_KEY_PREFIX = "worship-scroll-view-speed:";
 const VIEW_APPLY_ALL_KEY_PREFIX = "worship-scroll-view-all:";
+const VIEW_SETTINGS_VERSION_KEY = "worship-scroll-view-settings-version";
+const VIEW_SETTINGS_VERSION = "8";
 
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
@@ -40,6 +42,8 @@ let fontSize = Number(localStorage.getItem(FONT_STORAGE_KEY)) || 22;
 let isPlaying = false;
 let animationFrameId = null;
 let lastTimestamp = null;
+let pausedScrollTop = null;
+let lastSongDetectionTimestamp = null;
 
 let currentUser = null;
 let toastTimer = null;
@@ -100,13 +104,16 @@ function cacheElements() {
     "fontMinus",
     "fontPlus",
     "fontSizeValue",
+    "fontSizeInput",
     "speedMinus",
     "speedPlus",
     "globalSpeedValue",
+    "globalSpeedInput",
     "applySpeedAll",
     "playButton",
     "pauseButton",
     "resetButton",
+    "continueButton",
 
     "songNavigation",
     "prevSongButton",
@@ -1000,22 +1007,30 @@ function scrollLoop(timestamp) {
   lastTimestamp = timestamp;
 
   const speed = getCurrentSpeed();
-  const before = scroller.scrollTop;
-  const next = Math.min(
-    before + speed * deltaTime,
-    scroller.scrollHeight - scroller.clientHeight
-  );
+  const before = window.scrollY || scroller.scrollTop || 0;
+  const maxScroll = Math.max(0, scroller.scrollHeight - window.innerHeight);
+  const next = Math.min(before + speed * deltaTime, maxScroll);
 
-  scroller.scrollTop = next;
+  // Keep the movement linear and deterministic. We intentionally use the
+  // instant document scroll API here; CSS smooth scrolling would fight the
+  // per-frame movement and can make lyrics look like they vibrate.
+  window.scrollTo(0, next);
 
-  // Safari can coalesce writes while a smooth scroll is active. We never use
-  // smooth scrolling during playback, so each frame owns the exact position.
-  if (scroller.scrollTop !== before) {
+  // Current-song detection is intentionally throttled. Reading layout and
+  // repainting the current-song border every frame can cause text shimmer.
+  if (
+    lastSongDetectionTimestamp === null ||
+    timestamp - lastSongDetectionTimestamp >= 80
+  ) {
+    lastSongDetectionTimestamp = timestamp;
+    const previousIndex = currentSongIndex;
     detectCurrentSong();
-    updateUI(false);
+    if (previousIndex !== currentSongIndex) {
+      updateUI(false);
+    }
   }
 
-  if (hasProgramEnded()) {
+  if (next >= maxScroll - 1) {
     pause();
     return;
   }
@@ -1030,10 +1045,10 @@ function scrollToSongInstant(index) {
 
   if (!scroller || !targetSong) return false;
 
-  const absoluteTop = targetSong.getBoundingClientRect().top + scroller.scrollTop;
+  const absoluteTop = targetSong.getBoundingClientRect().top + window.scrollY;
   const targetTop = Math.max(0, absoluteTop - getViewerHeaderOffset());
 
-  scroller.scrollTo({ top: targetTop, behavior: "auto" });
+  window.scrollTo(0, targetTop);
   currentSongIndex = index;
   updateUI(false);
   return true;
@@ -1047,20 +1062,26 @@ function play() {
 
   if (isPlaying) return;
 
-  // Always anchor playback to the current song's TITLE, not arbitrary lyrics.
-  // From the top of a program this means the first song title.
+  // "Начать" starts the current song from its title.
   detectCurrentSong();
   scrollToSongInstant(currentSongIndex);
+  pausedScrollTop = null;
 
   isPlaying = true;
   lastTimestamp = null;
+  lastSongDetectionTimestamp = null;
   animationFrameId = requestAnimationFrame(scrollLoop);
   updateUI(false);
 }
 
 function pause() {
+  if (pageType === "program") {
+    pausedScrollTop = window.scrollY || getScrollContainer()?.scrollTop || 0;
+  }
+
   isPlaying = false;
   lastTimestamp = null;
+  lastSongDetectionTimestamp = null;
 
   if (animationFrameId !== null) {
     cancelAnimationFrame(animationFrameId);
@@ -1070,8 +1091,30 @@ function pause() {
   updateUI(false);
 }
 
+function continuePlayback() {
+  if (!songs.length) {
+    showToast("В программе нет песен.");
+    return;
+  }
+
+  if (isPlaying) return;
+
+  const scroller = getScrollContainer();
+  const position = pausedScrollTop ?? window.scrollY ?? scroller?.scrollTop ?? 0;
+
+  window.scrollTo(0, position);
+  detectCurrentSong();
+
+  isPlaying = true;
+  lastTimestamp = null;
+  lastSongDetectionTimestamp = null;
+  animationFrameId = requestAnimationFrame(scrollLoop);
+  updateUI(false);
+}
+
 function reset() {
   pause();
+  pausedScrollTop = null;
   if (!songs.length) return;
   scrollToSongInstant(0);
   updateUI(false);
@@ -1128,8 +1171,27 @@ function handleKeyboard(event) {
    Controls
    ========================================================= */
 
+function setGlobalSpeed(value) {
+  globalSpeed = clamp(Math.round(Number(value) || DEFAULT_SPEED), MIN_SPEED, MAX_SPEED);
+
+  if (els.globalSpeedInput) {
+    els.globalSpeedInput.value = String(globalSpeed);
+  }
+
+  if (viewerAllSpeed !== null) {
+    viewerAllSpeed = globalSpeed;
+  }
+
+  saveViewerSettings();
+  updateUI();
+}
+
 function changeGlobalSpeed(delta) {
   globalSpeed = clamp(globalSpeed + delta, MIN_SPEED, MAX_SPEED);
+
+  if (els.globalSpeedInput) {
+    els.globalSpeedInput.value = String(globalSpeed);
+  }
 
   if (viewerAllSpeed !== null) {
     viewerAllSpeed = globalSpeed;
@@ -1156,19 +1218,29 @@ function saveViewerSettings() {
 function loadViewerSettings() {
   if (!currentProgram) return;
 
+  const settingsVersion = localStorage.getItem(VIEW_SETTINGS_VERSION_KEY);
+  if (settingsVersion !== VIEW_SETTINGS_VERSION) {
+    localStorage.setItem(VIEW_SETTINGS_VERSION_KEY, VIEW_SETTINGS_VERSION);
+    localStorage.removeItem(`${VIEW_SPEED_KEY_PREFIX}${currentProgram.id}`);
+    localStorage.removeItem(`${VIEW_APPLY_ALL_KEY_PREFIX}${currentProgram.id}`);
+  }
+
   const savedSpeed = Number(
     localStorage.getItem(`${VIEW_SPEED_KEY_PREFIX}${currentProgram.id}`)
   );
 
   globalSpeed = savedSpeed
     ? clamp(savedSpeed, MIN_SPEED, MAX_SPEED)
-    : (songs[0]?.speed || DEFAULT_SPEED);
+    : DEFAULT_SPEED;
 
   const savedAll = localStorage.getItem(
     `${VIEW_APPLY_ALL_KEY_PREFIX}${currentProgram.id}`
   );
 
   viewerAllSpeed = savedAll ? clamp(Number(savedAll), MIN_SPEED, MAX_SPEED) : null;
+
+  if (els.globalSpeedInput) els.globalSpeedInput.value = String(globalSpeed);
+  if (els.fontSizeInput) els.fontSizeInput.value = String(fontSize);
 }
 
 function applySpeedToAll() {
@@ -1180,8 +1252,20 @@ function applySpeedToAll() {
   showToast(`Скорость ${globalSpeed} px/с применена ко всем песням.`);
 }
 
+function setFontSize(value) {
+  fontSize = clamp(Math.round(Number(value) || 22), MIN_FONT_SIZE, MAX_FONT_SIZE);
+  if (els.fontSizeInput) {
+    els.fontSizeInput.value = String(fontSize);
+  }
+  localStorage.setItem(FONT_STORAGE_KEY, fontSize);
+  updateFontSize();
+}
+
 function changeFontSize(delta) {
   fontSize = clamp(fontSize + delta, MIN_FONT_SIZE, MAX_FONT_SIZE);
+  if (els.fontSizeInput) {
+    els.fontSizeInput.value = String(fontSize);
+  }
   localStorage.setItem(FONT_STORAGE_KEY, fontSize);
   updateFontSize();
 }
@@ -1198,6 +1282,9 @@ function updateFontSize() {
 
   if (els.fontSizeValue) {
     els.fontSizeValue.textContent = `${fontSize} px`;
+  }
+  if (els.fontSizeInput && document.activeElement !== els.fontSizeInput) {
+    els.fontSizeInput.value = String(fontSize);
   }
 }
 
@@ -1434,9 +1521,15 @@ function updateUI(renderFont = true) {
   if (els.globalSpeedValue) {
     els.globalSpeedValue.textContent = globalSpeed;
   }
+  if (els.globalSpeedInput && document.activeElement !== els.globalSpeedInput) {
+    els.globalSpeedInput.value = String(globalSpeed);
+  }
 
   if (els.fontSizeValue) {
     els.fontSizeValue.textContent = `${fontSize} px`;
+  }
+  if (els.fontSizeInput && document.activeElement !== els.fontSizeInput) {
+    els.fontSizeInput.value = String(fontSize);
   }
 
   document.querySelectorAll(".song").forEach((element, index) => {
@@ -1458,6 +1551,10 @@ function updateUI(renderFont = true) {
   if (els.playButton) {
     els.playButton.textContent =
       isPlaying ? "▶︎ Идёт" : "▶︎ Начать";
+  }
+
+  if (els.continueButton) {
+    els.continueButton.disabled = isPlaying || pausedScrollTop === null;
   }
 
   if (renderFont) updateFontSize();
@@ -1555,14 +1652,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
   els.fontMinus?.addEventListener("click", () => changeFontSize(-1));
   els.fontPlus?.addEventListener("click", () => changeFontSize(1));
+  els.fontSizeInput?.addEventListener("change", () => setFontSize(els.fontSizeInput.value));
+  els.fontSizeInput?.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      setFontSize(els.fontSizeInput.value);
+      els.fontSizeInput.blur();
+    }
+  });
 
   els.speedMinus?.addEventListener("click", () => changeGlobalSpeed(-1));
   els.speedPlus?.addEventListener("click", () => changeGlobalSpeed(1));
+  els.globalSpeedInput?.addEventListener("change", () => setGlobalSpeed(els.globalSpeedInput.value));
+  els.globalSpeedInput?.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      setGlobalSpeed(els.globalSpeedInput.value);
+      els.globalSpeedInput.blur();
+    }
+  });
   els.applySpeedAll?.addEventListener("click", applySpeedToAll);
+
+  bindLongPress(els.fontMinus, () => changeFontSize(-1));
+  bindLongPress(els.fontPlus, () => changeFontSize(1));
+  bindLongPress(els.speedMinus, () => changeGlobalSpeed(-1));
+  bindLongPress(els.speedPlus, () => changeGlobalSpeed(1));
 
   els.playButton?.addEventListener("click", play);
   els.pauseButton?.addEventListener("click", pause);
   els.resetButton?.addEventListener("click", reset);
+  els.continueButton?.addEventListener("click", continuePlayback);
 
   els.prevSongButton?.addEventListener("click", () => {
     goToSong(currentSongIndex - 1);
@@ -1579,4 +1698,32 @@ document.addEventListener("DOMContentLoaded", () => {
   els.addSongButton?.addEventListener("click", addSong);
 
   updateFontSize();
+
+function bindLongPress(button, action) {
+  if (!button) return;
+
+  let holdTimer = null;
+  let repeatTimer = null;
+
+  const stop = () => {
+    if (holdTimer !== null) clearTimeout(holdTimer);
+    if (repeatTimer !== null) clearInterval(repeatTimer);
+    holdTimer = null;
+    repeatTimer = null;
+  };
+
+  const start = event => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    stop();
+    holdTimer = setTimeout(() => {
+      repeatTimer = setInterval(action, 70);
+    }, 350);
+  };
+
+  button.addEventListener("pointerdown", start);
+  button.addEventListener("pointerup", stop);
+  button.addEventListener("pointercancel", stop);
+  button.addEventListener("pointerleave", stop);
+}
+
 });

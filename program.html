@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>GRACE WORSHIP — SCROLL</title>
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body data-page="program">
 
@@ -29,7 +29,7 @@
         <span class="control-label">Размер</span>
         <div class="control-buttons">
           <button id="fontMinus" class="small-button" aria-label="Уменьшить размер текста">A−</button>
-          <span id="fontSizeValue" class="value-display">22 px</span>
+          <input id="fontSizeInput" class="value-input" type="number" inputmode="numeric" min="1" max="60" step="1" value="22" aria-label="Размер текста в пикселях">
           <button id="fontPlus" class="small-button" aria-label="Увеличить размер текста">A+</button>
         </div>
       </div>
@@ -38,7 +38,7 @@
         <span class="control-label">Скорость</span>
         <div class="control-buttons">
           <button id="speedMinus" class="small-button" aria-label="Уменьшить скорость">−</button>
-          <span id="globalSpeedValue" class="value-display">18</span>
+          <input id="globalSpeedInput" class="value-input" type="number" inputmode="numeric" min="1" max="100" step="1" value="60" aria-label="Скорость прокрутки в пикселях в секунду">
           <button id="speedPlus" class="small-button" aria-label="Увеличить скорость">+</button>
           <button id="applySpeedAll" class="secondary-button compact">Применить ко всем</button>
         </div>
@@ -48,6 +48,7 @@
         <button id="playButton" class="primary-button">▶︎ Начать</button>
         <button id="pauseButton" class="secondary-button">⏸︎ Пауза</button>
         <button id="resetButton" class="secondary-button">↺ Сначала</button>
+        <button id="continueButton" class="secondary-button">▶︎ Продолжить</button>
       </div>
     </div>
   </header>
@@ -110,6 +111,6 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=7"></script>
+  <script src="script.js?v=8"></script>
 </body>
 </html>

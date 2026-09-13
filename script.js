@@ -10,7 +10,7 @@ const MIN_SPEED = 1;
 const MAX_SPEED = 100;
 const DEFAULT_SPEED = 18;
 
-const MIN_FONT_SIZE = 14;
+const MIN_FONT_SIZE = 1;
 const MAX_FONT_SIZE = 60;
 
 const SWITCH_LINE = 140;
@@ -112,6 +112,7 @@ function cacheElements() {
     "prevSongButton",
     "nextSongButton",
     "songCounter",
+    "programScroll",
     "program",
     "emptyState",
 
@@ -136,6 +137,13 @@ function cacheElements() {
 
 function bindCommonEvents() {
   els.themeToggle?.addEventListener("click", toggleTheme);
+
+  // Manual touch/mouse scrolling should immediately update the active song.
+  els.programScroll?.addEventListener("scroll", () => {
+    if (pageType === "program" && !isPlaying) {
+      updateUI();
+    }
+  }, { passive: true });
 
   els.authButton?.addEventListener("click", openAuthModal);
   els.logoutButton?.addEventListener("click", logout);
@@ -888,7 +896,7 @@ function renderProgram() {
         <div class="song-speed-badge">${song.speed} px/с</div>
       </header>
 
-      <pre class="lyrics-text">${escapeHtml(song.text || "")}</pre>
+      <pre class="lyrics-text">${escapeHtml(cleanSongText(song.text || ""))}</pre>
     </section>
   `).join("");
 
@@ -915,17 +923,27 @@ function createEndSpacer() {
    Scrolling
    ========================================================= */
 
+function getScrollContainer() {
+  return els.programScroll || null;
+}
+
 function detectCurrentSong() {
   if (!songs.length || pageType !== "program") {
     currentSongIndex = 0;
     return null;
   }
 
-  const songElements = document.querySelectorAll(".song");
+  const scroller = getScrollContainer();
+  if (!scroller) {
+    currentSongIndex = 0;
+    return null;
+  }
+
+  const songElements = scroller.querySelectorAll(".song");
   let detected = 0;
 
   for (let i = 0; i < songElements.length; i++) {
-    const top = songElements[i].getBoundingClientRect().top;
+    const top = songElements[i].offsetTop - scroller.scrollTop;
 
     if (top <= SWITCH_LINE) {
       detected = i;
@@ -935,7 +953,7 @@ function detectCurrentSong() {
   }
 
   currentSongIndex = detected;
-  return songElements[detected];
+  return songElements[detected] || null;
 }
 
 function getCurrentSpeed() {
@@ -955,16 +973,21 @@ function getCurrentSpeed() {
 function hasProgramEnded() {
   if (!songs.length) return true;
 
-  const songElements = document.querySelectorAll(".song");
-  const lastSong = songElements[songElements.length - 1];
+  const scroller = getScrollContainer();
+  if (!scroller) return true;
 
-  if (!lastSong) return true;
-
-  return lastSong.getBoundingClientRect().bottom <= SWITCH_LINE;
+  return scroller.scrollTop >= scroller.scrollHeight - scroller.clientHeight - 2;
 }
 
 function scrollLoop(timestamp) {
   if (!isPlaying) return;
+
+  const scroller = getScrollContainer();
+  if (!scroller) {
+    pause();
+    showToast("Не найдена область прокрутки.");
+    return;
+  }
 
   if (lastTimestamp === null) {
     lastTimestamp = timestamp;
@@ -976,7 +999,6 @@ function scrollLoop(timestamp) {
   detectCurrentSong();
 
   const speed = getCurrentSpeed();
-  const scroller = document.scrollingElement || document.documentElement;
   scroller.scrollTop += speed * deltaTime;
 
   detectCurrentSong();
@@ -989,6 +1011,22 @@ function scrollLoop(timestamp) {
   animationFrameId = requestAnimationFrame(scrollLoop);
 }
 
+function scrollToSongInstant(index) {
+  const scroller = getScrollContainer();
+  const songElements = scroller?.querySelectorAll(".song");
+  const targetSong = songElements?.[index];
+
+  if (!scroller || !targetSong) return false;
+
+  scroller.scrollTo({
+    top: Math.max(0, targetSong.offsetTop - SWITCH_LINE),
+    behavior: "auto"
+  });
+
+  currentSongIndex = index;
+  return true;
+}
+
 function play() {
   if (!songs.length) {
     showToast("В программе нет песен.");
@@ -996,6 +1034,19 @@ function play() {
   }
 
   if (isPlaying) return;
+
+  const scroller = getScrollContainer();
+  if (!scroller) {
+    showToast("Не найдена область прокрутки.");
+    return;
+  }
+
+  // Always start from the beginning of the first song when the viewer is
+  // above the first song. This also gives the user an immediate visual cue.
+  const firstSong = scroller.querySelector(".song");
+  if (firstSong && scroller.scrollTop < firstSong.offsetTop - SWITCH_LINE) {
+    scrollToSongInstant(0);
+  }
 
   isPlaying = true;
   lastTimestamp = null;
@@ -1020,18 +1071,7 @@ function reset() {
 
   if (!songs.length) return;
 
-  const firstSong = document.querySelector(".song");
-  if (!firstSong) return;
-
-  const target = firstSong.getBoundingClientRect().top + window.scrollY - SWITCH_LINE;
-
-  const scroller = document.scrollingElement || document.documentElement;
-  scroller.scrollTo({
-    top: Math.max(0, target),
-    behavior: "auto"
-  });
-
-  currentSongIndex = 0;
+  scrollToSongInstant(0);
   updateUI();
 }
 
@@ -1043,24 +1083,23 @@ function goToSong(index) {
   if (!songs.length) return;
 
   const targetIndex = clamp(index, 0, songs.length - 1);
-  const songElements = document.querySelectorAll(".song");
-  const targetSong = songElements[targetIndex];
+  const scroller = getScrollContainer();
+  const songElements = scroller?.querySelectorAll(".song");
+  const targetSong = songElements?.[targetIndex];
 
-  if (!targetSong) return;
+  if (!scroller || !targetSong) return;
 
   currentSongIndex = targetIndex;
 
-  const target =
-    targetSong.getBoundingClientRect().top +
-    window.scrollY -
-    SWITCH_LINE;
+  const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+  const target = clamp(
+    targetSong.offsetTop - SWITCH_LINE,
+    0,
+    maxScroll
+  );
 
-  const maxScroll =
-    document.documentElement.scrollHeight - window.innerHeight;
-
-  const scroller = document.scrollingElement || document.documentElement;
   scroller.scrollTo({
-    top: clamp(target, 0, Math.max(0, maxScroll)),
+    top: target,
     behavior: "smooth"
   });
 
@@ -1438,6 +1477,7 @@ function updateUI() {
 window.addEventListener("resize", () => {
   if (pageType === "program") {
     createEndSpacer();
+    updateFontSize();
   }
 });
 
@@ -1459,6 +1499,14 @@ function formatDate(dateString) {
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
+}
+
+function cleanSongText(value) {
+  // Keep internal spaces because they position chords, but remove trailing
+  // whitespace that can create unnecessary horizontal scrolling on phones.
+  return String(value)
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\u00a0/g, " ");
 }
 
 function escapeHtml(value) {

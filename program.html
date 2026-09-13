@@ -73,12 +73,14 @@
       <button id="nextSongButton" class="nav-button" title="Следующая песня">↓</button>
     </div>
 
-    <section id="program"></section>
+    <div id="programScroll" class="program-scroll" tabindex="0" aria-label="Прокручиваемая область песен">
+      <section id="program"></section>
 
-    <section id="emptyState" class="empty-state hidden">
+      <section id="emptyState" class="empty-state hidden">
       <h2>В этой программе пока нет песен</h2>
-      <p>Ведущий может добавить песни через раздел редактирования.</p>
-    </section>
+        <p>Ведущий может добавить песни через раздел редактирования.</p>
+      </section>
+    </div>
   </main>
 
   <div id="authModal" class="modal hidden" aria-hidden="true">

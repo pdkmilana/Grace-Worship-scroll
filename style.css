@@ -443,6 +443,44 @@ button:disabled {
 }
 
 /* =========================================================
+   Dedicated viewer scroll area
+   ========================================================= */
+
+body[data-page="program"] {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.program-page {
+  height: 100vh;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.program-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  padding-right: 2px;
+  padding-bottom: 80px;
+}
+
+.program-scroll:focus {
+  outline: none;
+}
+
+.program-scroll .end-spacer {
+  min-height: 25vh;
+}
+
+/* =========================================================
    Song navigation
    ========================================================= */
 
@@ -1205,7 +1243,15 @@ a {
   }
 
   .program-page {
+    height: 100vh;
+    min-height: 100vh;
     padding-top: 214px;
+    padding-bottom: 0;
+  }
+
+  .program-scroll {
+    padding-right: 0;
+    padding-bottom: 60px;
   }
 
   .program-hero {
@@ -1243,6 +1289,8 @@ a {
     line-height: 1.5;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    padding-right: 4px;
   }
 
   .song-navigation {

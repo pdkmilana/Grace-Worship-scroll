@@ -1772,3 +1772,31 @@ body[data-page="program"] .speed-more-button {
     top: 116px;
   }
 }
+
+/* v9.1 — song selector inside speed popover */
+.song-speed-select-label {
+  display: block;
+  margin: 0 0 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.song-speed-select {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 38px 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+  margin-bottom: 10px;
+}
+
+.song-speed-select:focus {
+  border-color: var(--accent);
+}

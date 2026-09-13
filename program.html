@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>GRACE WORSHIP — SCROLL</title>
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=9.1">
 </head>
 <body data-page="program">
 
@@ -55,8 +55,9 @@
   </header>
 
   <div id="songSpeedPopover" class="song-speed-popover hidden" aria-hidden="true">
-    <div class="song-speed-popover-title">Скорость этой песни</div>
-    <div id="songSpeedPopoverSong" class="song-speed-popover-song">—</div>
+    <div class="song-speed-popover-title">Скорость песни</div>
+    <label class="song-speed-select-label" for="songSpeedSelect">Песня</label>
+    <select id="songSpeedSelect" class="song-speed-select" aria-label="Выбрать песню для настройки скорости"></select>
     <div class="song-speed-popover-row">
       <button id="songSpeedMinus" class="small-button" type="button" aria-label="Уменьшить скорость песни">−</button>
       <input id="songSpeedInput" class="value-input" type="number" inputmode="numeric" min="1" max="100" step="1" value="60" aria-label="Скорость текущей песни">
@@ -126,6 +127,6 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=9"></script>
+  <script src="script.js?v=9.1"></script>
 </body>
 </html>

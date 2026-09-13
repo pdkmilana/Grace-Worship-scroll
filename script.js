@@ -39,6 +39,7 @@ let currentSongIndex = 0;
 let globalSpeed = DEFAULT_SPEED;
 let viewerAllSpeed = null;
 let viewerSongSpeeds = {};
+let selectedSongSpeedIndex = 0;
 let fontSize = Number(localStorage.getItem(FONT_STORAGE_KEY)) || 22;
 
 let isPlaying = false;
@@ -117,6 +118,7 @@ function cacheElements() {
     "songSpeedButton",
     "songSpeedPopover",
     "songSpeedPopoverSong",
+    "songSpeedSelect",
     "songSpeedInput",
     "songSpeedMinus",
     "songSpeedPlus",
@@ -1333,16 +1335,42 @@ function getCurrentSongCustomSpeed() {
   return Number.isFinite(value) ? clamp(value, MIN_SPEED, MAX_SPEED) : null;
 }
 
+function populateSongSpeedSelect() {
+  const select = els.songSpeedSelect;
+  if (!select) return;
+
+  select.innerHTML = "";
+  songs.forEach((song, index) => {
+    const option = document.createElement("option");
+    option.value = String(index);
+    option.textContent = `${String(index + 1).padStart(2, "0")} — ${song.title || "Без названия"}`;
+    select.appendChild(option);
+  });
+
+  selectedSongSpeedIndex = clamp(currentSongIndex, 0, Math.max(0, songs.length - 1));
+  select.value = String(selectedSongSpeedIndex);
+}
+
+function getSongSpeedAtIndex(index) {
+  const song = songs[index];
+  if (!song) return globalSpeed;
+  const value = Number(viewerSongSpeeds[song.id]);
+  return Number.isFinite(value) ? clamp(value, MIN_SPEED, MAX_SPEED) : globalSpeed;
+}
+
+function syncSelectedSongSpeedEditor() {
+  const index = clamp(Number(selectedSongSpeedIndex), 0, Math.max(0, songs.length - 1));
+  selectedSongSpeedIndex = index;
+
+  if (els.songSpeedSelect) els.songSpeedSelect.value = String(index);
+  if (els.songSpeedInput) els.songSpeedInput.value = String(getSongSpeedAtIndex(index));
+}
+
 function openSongSpeedPopover() {
   if (!songs.length || pageType !== "program") return;
 
-  const song = songs[currentSongIndex];
-  const current = getCurrentSongCustomSpeed() ?? globalSpeed;
-
-  if (els.songSpeedPopoverSong) {
-    els.songSpeedPopoverSong.textContent = `${String(currentSongIndex + 1).padStart(2, "0")} — ${song.title || "Без названия"}`;
-  }
-  if (els.songSpeedInput) els.songSpeedInput.value = String(current);
+  populateSongSpeedSelect();
+  syncSelectedSongSpeedEditor();
 
   els.songSpeedPopover?.classList.remove("hidden");
   els.songSpeedPopover?.setAttribute("aria-hidden", "false");
@@ -1356,7 +1384,8 @@ function closeSongSpeedPopover() {
 
 function setCurrentSongSpeed(value) {
   if (!songs.length) return;
-  const song = songs[currentSongIndex];
+  const index = clamp(Number(selectedSongSpeedIndex), 0, songs.length - 1);
+  const song = songs[index];
   const speed = clamp(Math.round(Number(value) || globalSpeed), MIN_SPEED, MAX_SPEED);
 
   viewerSongSpeeds[song.id] = speed;
@@ -1369,7 +1398,8 @@ function setCurrentSongSpeed(value) {
 
 function resetCurrentSongSpeed() {
   if (!songs.length) return;
-  const song = songs[currentSongIndex];
+  const index = clamp(Number(selectedSongSpeedIndex), 0, songs.length - 1);
+  const song = songs[index];
   delete viewerSongSpeeds[song.id];
   viewerAllSpeed = null;
   saveViewerSettings();
@@ -1380,7 +1410,7 @@ function resetCurrentSongSpeed() {
 }
 
 function changeCurrentSongSpeed(delta) {
-  const current = getCurrentSongCustomSpeed() ?? globalSpeed;
+  const current = getSongSpeedAtIndex(selectedSongSpeedIndex);
   setCurrentSongSpeed(current + delta);
 }
 
@@ -1645,11 +1675,12 @@ function updateUI(renderFont = true) {
 
   const count = songs.length;
   const customCurrentSpeed = getCurrentSongCustomSpeed();
-  if (els.songSpeedInput && document.activeElement !== els.songSpeedInput) {
-    els.songSpeedInput.value = String(customCurrentSpeed ?? globalSpeed);
-  }
-  if (els.songSpeedPopoverSong && songs[currentSongIndex]) {
-    els.songSpeedPopoverSong.textContent = `${String(currentSongIndex + 1).padStart(2, "0")} — ${songs[currentSongIndex].title || "Без названия"}`;
+  if (els.songSpeedPopover?.classList.contains("hidden")) {
+    if (els.songSpeedInput && document.activeElement !== els.songSpeedInput) {
+      els.songSpeedInput.value = String(customCurrentSpeed ?? globalSpeed);
+    }
+  } else {
+    syncSelectedSongSpeedEditor();
   }
 
   if (els.songCounter) {
@@ -1819,6 +1850,10 @@ document.addEventListener("DOMContentLoaded", () => {
   els.applySpeedAll?.addEventListener("click", applySpeedToAll);
 
   els.songSpeedButton?.addEventListener("click", openSongSpeedPopover);
+  els.songSpeedSelect?.addEventListener("change", () => {
+    selectedSongSpeedIndex = Number(els.songSpeedSelect.value);
+    syncSelectedSongSpeedEditor();
+  });
   els.songSpeedSave?.addEventListener("click", () => {
     setCurrentSongSpeed(els.songSpeedInput?.value);
     closeSongSpeedPopover();

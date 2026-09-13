@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>GRACE WORSHIP — SCROLL</title>
-  <link rel="stylesheet" href="style.css?v=9.3">
+  <link rel="stylesheet" href="style.css?v=9.2-pixels">
 </head>
 <body data-page="program">
 
@@ -35,12 +35,12 @@
       </div>
 
       <div class="control-group speed-control">
-        <span class="control-label">BPM</span>
+        <span class="control-label">Скорость</span>
         <div class="control-buttons">
-          <button id="speedMinus" class="small-button" aria-label="Уменьшить BPM">−</button>
-          <input id="globalSpeedInput" class="value-input" type="number" inputmode="numeric" min="40" max="180" step="1" value="80" aria-label="Темп песни в BPM">
-          <button id="speedPlus" class="small-button" aria-label="Увеличить BPM">+</button>
-          <button id="songSpeedButton" class="small-button speed-more-button" type="button" aria-label="BPM текущей песни" title="BPM текущей песни">⋯</button>
+          <button id="speedMinus" class="small-button" aria-label="Уменьшить скорость">−</button>
+          <input id="globalSpeedInput" class="value-input" type="number" inputmode="numeric" min="1" max="100" step="1" value="60" aria-label="Общая скорость прокрутки в пикселях в секунду">
+          <button id="speedPlus" class="small-button" aria-label="Увеличить скорость">+</button>
+          <button id="songSpeedButton" class="small-button speed-more-button" type="button" aria-label="Скорость текущей песни" title="Скорость текущей песни">⋯</button>
           <button id="applySpeedAll" class="secondary-button compact">Применить ко всем</button>
         </div>
       </div>
@@ -55,13 +55,13 @@
   </header>
 
   <div id="songSpeedPopover" class="song-speed-popover hidden" aria-hidden="true">
-    <div class="song-speed-popover-title">BPM песни</div>
+    <div class="song-speed-popover-title">Скорость песни</div>
     <label class="song-speed-select-label" for="songSpeedSelect">Песня</label>
     <select id="songSpeedSelect" class="song-speed-select" aria-label="Выбрать песню для настройки скорости"></select>
     <div class="song-speed-popover-row">
-      <button id="songSpeedMinus" class="small-button" type="button" aria-label="Уменьшить BPM песни">−</button>
-      <input id="songSpeedInput" class="value-input" type="number" inputmode="numeric" min="40" max="180" step="1" value="80" aria-label="BPM текущей песни">
-      <button id="songSpeedPlus" class="small-button" type="button" aria-label="Увеличить BPM песни">+</button>
+      <button id="songSpeedMinus" class="small-button" type="button" aria-label="Уменьшить скорость песни">−</button>
+      <input id="songSpeedInput" class="value-input" type="number" inputmode="numeric" min="1" max="100" step="1" value="60" aria-label="Скорость текущей песни">
+      <button id="songSpeedPlus" class="small-button" type="button" aria-label="Увеличить скорость песни">+</button>
     </div>
     <div class="song-speed-popover-actions">
       <button id="songSpeedSave" class="primary-button" type="button">Сохранить</button>
@@ -126,6 +126,6 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=9.3"></script>
+  <script src="script.js?v=9.2-pixels"></script>
 </body>
 </html>

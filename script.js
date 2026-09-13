@@ -6,12 +6,9 @@
 const SUPABASE_URL = "https://ylcnkauqewvjvocbmweh.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_KIhYKuei7TMvbKf0JGzwOA_JPpLb7lP";
 
-// BPM is the musical source value. Scroll speed is derived from BPM.
-// Calibration: 80 BPM = 60 px/s, so the scroll speed follows tempo proportionally.
-const MIN_BPM = 40;
-const MAX_BPM = 180;
-const DEFAULT_BPM = 80;
-const PX_PER_BPM = 0.75;
+const MIN_SPEED = 1;
+const MAX_SPEED = 100;
+const DEFAULT_SPEED = 60;
 
 const MIN_FONT_SIZE = 1;
 const MAX_FONT_SIZE = 60;
@@ -25,20 +22,7 @@ const VIEW_SPEED_KEY_PREFIX = "worship-scroll-view-speed:";
 const VIEW_APPLY_ALL_KEY_PREFIX = "worship-scroll-view-all:";
 const VIEW_SONG_SPEEDS_KEY_PREFIX = "worship-scroll-view-song-speeds:";
 const VIEW_SETTINGS_VERSION_KEY = "worship-scroll-view-settings-version";
-const VIEW_SETTINGS_VERSION = "9.3";
-
-function clampBpm(value) {
-  return clamp(Math.round(Number(value) || DEFAULT_BPM), MIN_BPM, MAX_BPM);
-}
-
-function bpmToPxPerSecond(bpm) {
-  return clampBpm(bpm) * PX_PER_BPM;
-}
-
-function pxPerSecondToBpm(pxPerSecond) {
-  return clampBpm(Number(pxPerSecond) / PX_PER_BPM);
-}
-
+const VIEW_SETTINGS_VERSION = "8";
 
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
@@ -52,10 +36,10 @@ let currentProgram = null;
 let songs = [];
 
 let currentSongIndex = 0;
-let globalBpm = DEFAULT_BPM;
-let viewerAllBpm = null;
-let viewerSongBpms = {};
-let selectedSongBpmIndex = 0;
+let globalSpeed = DEFAULT_SPEED;
+let viewerAllSpeed = null;
+let viewerSongSpeeds = {};
+let selectedSongSpeedIndex = 0;
 let fontSize = Number(localStorage.getItem(FONT_STORAGE_KEY)) || 22;
 
 let isPlaying = false;
@@ -271,7 +255,7 @@ function renderPrograms() {
 
           ${currentUser ? `
           <a
-            class="secondary-button"
+            class="secondary-button edit-program-link"
             href="edit.html?program=${encodeURIComponent(program.id)}"
           >
             Редактировать
@@ -467,7 +451,7 @@ async function loadProgramSongs(programId) {
         id: song.id,
         title: song.title || "",
         text: song.text || "",
-        speed: Number(song.speed) < MIN_BPM ? DEFAULT_BPM : clampBpm(Number(song.speed) || DEFAULT_BPM),
+        speed: clamp(Number(song.speed) || DEFAULT_SPEED, MIN_SPEED, MAX_SPEED),
         created_at: song.created_at,
         updated_at: song.updated_at
       }
@@ -479,7 +463,7 @@ async function loadProgramSongs(programId) {
     .map(relation => byId.get(relation.song_id))
     .filter(Boolean);
 
-  globalBpm = clampBpm(songs[0]?.speed || DEFAULT_BPM);
+  globalSpeed = songs[0]?.speed || DEFAULT_SPEED;
 }
 
 /* =========================================================
@@ -540,7 +524,7 @@ function renderEditors() {
 
       <div class="editor-footer">
         <div class="editor-speed">
-          <span>BPM</span>
+          <span>Скорость</span>
           <button class="small-button" data-action="speed-minus" data-id="${song.id}">−</button>
 
           <input
@@ -548,13 +532,13 @@ function renderEditors() {
             data-field="speed"
             data-id="${song.id}"
             type="number"
-            min="${MIN_BPM}"
-            max="${MAX_BPM}"
+            min="${MIN_SPEED}"
+            max="${MAX_SPEED}"
             value="${song.speed}"
           >
 
           <button class="small-button" data-action="speed-plus" data-id="${song.id}">+</button>
-          <span>BPM</span>
+          <span>px/с</span>
         </div>
       </div>
     </article>
@@ -681,7 +665,7 @@ async function addSong() {
   const newSong = {
     title: `Новая песня ${songs.length + 1}`,
     text: "",
-    speed: globalBpm
+    speed: globalSpeed
   };
 
   els.addSongButton.disabled = true;
@@ -716,7 +700,7 @@ async function addSong() {
       id: created.id,
       title: created.title,
       text: created.text || "",
-      speed: clampBpm(Number(created.speed) || DEFAULT_BPM),
+      speed: Number(created.speed) || DEFAULT_SPEED,
       created_at: created.created_at,
       updated_at: created.updated_at
     });
@@ -816,7 +800,7 @@ async function saveSongField(element) {
   let value = element.value;
 
   if (field === "speed") {
-    value = clampBpm(value);
+    value = clamp(Number(value) || DEFAULT_SPEED, MIN_SPEED, MAX_SPEED);
     element.value = value;
   }
 
@@ -836,7 +820,7 @@ async function saveSongField(element) {
     if (error) throw error;
 
     if (field === "speed") {
-      globalBpm = song.speed;
+      globalSpeed = song.speed;
     }
 
     if (pageType === "program") {
@@ -858,7 +842,7 @@ async function changeSongSpeed(id, delta) {
   const song = songs.find(item => item.id === id);
   if (!song || !currentUser) return;
 
-  song.speed = clampBpm(song.speed + delta);
+  song.speed = clamp(song.speed + delta, MIN_SPEED, MAX_SPEED);
 
   try {
     const { error } = await supabaseClient
@@ -871,7 +855,7 @@ async function changeSongSpeed(id, delta) {
 
     if (error) throw error;
 
-    globalBpm = song.speed;
+    globalSpeed = song.speed;
 
     if (pageType === "program") {
       renderProgram();
@@ -911,7 +895,7 @@ function renderProgram() {
           <h2 class="song-title">${escapeHtml(song.title || "Без названия")}</h2>
         </div>
 
-        <div class="song-speed-badge">${song.speed} BPM</div>
+        <div class="song-speed-badge">${song.speed} px/с</div>
       </header>
 
       <pre class="lyrics-text">${escapeHtml(cleanSongText(song.text || ""))}</pre>
@@ -995,19 +979,18 @@ function detectCurrentSong() {
 }
 
 function getCurrentSpeed() {
-  if (!songs.length) return bpmToPxPerSecond(globalBpm);
+  if (!songs.length) return globalSpeed;
 
-  if (viewerAllBpm !== null) {
-    return bpmToPxPerSecond(viewerAllBpm);
+  if (viewerAllSpeed !== null) {
+    return viewerAllSpeed;
   }
 
   const song = songs[currentSongIndex];
-  const customBpm = song ? Number(viewerSongBpms[song.id]) : NaN;
-  const bpm = Number.isFinite(customBpm)
-    ? clampBpm(customBpm)
-    : clampBpm(globalBpm);
+  const customSpeed = song ? Number(viewerSongSpeeds[song.id]) : NaN;
 
-  return bpmToPxPerSecond(bpm);
+  return Number.isFinite(customSpeed)
+    ? clamp(customSpeed, MIN_SPEED, MAX_SPEED)
+    : clamp(globalSpeed, MIN_SPEED, MAX_SPEED);
 }
 
 function hasProgramEnded() {
@@ -1242,30 +1225,30 @@ function handleKeyboard(event) {
    Controls
    ========================================================= */
 
-function setGlobalBpm(value) {
-  globalBpm = clampBpm(value);
+function setGlobalSpeed(value) {
+  globalSpeed = clamp(Math.round(Number(value) || DEFAULT_SPEED), MIN_SPEED, MAX_SPEED);
 
   if (els.globalSpeedInput) {
-    els.globalSpeedInput.value = String(globalBpm);
+    els.globalSpeedInput.value = String(globalSpeed);
   }
 
-  if (viewerAllBpm !== null) {
-    viewerAllBpm = globalBpm;
+  if (viewerAllSpeed !== null) {
+    viewerAllSpeed = globalSpeed;
   }
 
   saveViewerSettings();
   updateUI();
 }
 
-function changeGlobalBpm(delta) {
-  globalBpm = clampBpm(globalBpm + delta);
+function changeGlobalSpeed(delta) {
+  globalSpeed = clamp(globalSpeed + delta, MIN_SPEED, MAX_SPEED);
 
   if (els.globalSpeedInput) {
-    els.globalSpeedInput.value = String(globalBpm);
+    els.globalSpeedInput.value = String(globalSpeed);
   }
 
-  if (viewerAllBpm !== null) {
-    viewerAllBpm = globalBpm;
+  if (viewerAllSpeed !== null) {
+    viewerAllSpeed = globalSpeed;
   }
 
   saveViewerSettings();
@@ -1277,17 +1260,17 @@ function saveViewerSettings() {
 
   localStorage.setItem(
     `${VIEW_SPEED_KEY_PREFIX}${currentProgram.id}`,
-    String(globalBpm)
+    String(globalSpeed)
   );
 
   localStorage.setItem(
     `${VIEW_APPLY_ALL_KEY_PREFIX}${currentProgram.id}`,
-    viewerAllBpm === null ? "" : String(viewerAllBpm)
+    viewerAllSpeed === null ? "" : String(viewerAllSpeed)
   );
 
   localStorage.setItem(
     `${VIEW_SONG_SPEEDS_KEY_PREFIX}${currentProgram.id}`,
-    JSON.stringify(viewerSongBpms)
+    JSON.stringify(viewerSongSpeeds)
   );
 }
 
@@ -1302,46 +1285,46 @@ function loadViewerSettings() {
     localStorage.removeItem(`${VIEW_SONG_SPEEDS_KEY_PREFIX}${currentProgram.id}`);
   }
 
-  const savedBpm = Number(
+  const savedSpeed = Number(
     localStorage.getItem(`${VIEW_SPEED_KEY_PREFIX}${currentProgram.id}`)
   );
 
-  globalBpm = savedBpm
-    ? clampBpm(savedBpm)
-    : clampBpm(songs[0]?.speed || DEFAULT_BPM);
+  globalSpeed = savedSpeed
+    ? clamp(savedSpeed, MIN_SPEED, MAX_SPEED)
+    : DEFAULT_SPEED;
 
   const savedAll = localStorage.getItem(
     `${VIEW_APPLY_ALL_KEY_PREFIX}${currentProgram.id}`
   );
 
-  viewerAllBpm = savedAll ? clampBpm(Number(savedAll)) : null;
+  viewerAllSpeed = savedAll ? clamp(Number(savedAll), MIN_SPEED, MAX_SPEED) : null;
 
   try {
-    const rawSongBpms = localStorage.getItem(`${VIEW_SONG_SPEEDS_KEY_PREFIX}${currentProgram.id}`);
-    viewerSongBpms = rawSongBpms ? JSON.parse(rawSongBpms) || {} : {};
+    const rawSongSpeeds = localStorage.getItem(`${VIEW_SONG_SPEEDS_KEY_PREFIX}${currentProgram.id}`);
+    viewerSongSpeeds = rawSongSpeeds ? JSON.parse(rawSongSpeeds) || {} : {};
   } catch {
-    viewerSongBpms = {};
+    viewerSongSpeeds = {};
   }
 
-  if (els.globalSpeedInput) els.globalSpeedInput.value = String(globalBpm);
+  if (els.globalSpeedInput) els.globalSpeedInput.value = String(globalSpeed);
   if (els.fontSizeInput) els.fontSizeInput.value = String(fontSize);
 }
 
 function applySpeedToAll() {
   if (!songs.length || pageType !== "program") return;
 
-  viewerAllBpm = globalBpm;
-  viewerSongBpms = {};
+  viewerAllSpeed = globalSpeed;
+  viewerSongSpeeds = {};
   saveViewerSettings();
   updateUI();
-  showToast(`Темп ${globalBpm} BPM применён ко всем песням.`);
+  showToast(`Скорость ${globalSpeed} px/с применена ко всем песням.`);
 }
 
 function getCurrentSongCustomSpeed() {
   const song = songs[currentSongIndex];
   if (!song) return null;
-  const value = Number(viewerSongBpms[song.id]);
-  return Number.isFinite(value) ? clampBpm(value) : null;
+  const value = Number(viewerSongSpeeds[song.id]);
+  return Number.isFinite(value) ? clamp(value, MIN_SPEED, MAX_SPEED) : null;
 }
 
 function populateSongSpeedSelect() {
@@ -1356,20 +1339,20 @@ function populateSongSpeedSelect() {
     select.appendChild(option);
   });
 
-  selectedSongBpmIndex = clamp(currentSongIndex, 0, Math.max(0, songs.length - 1));
-  select.value = String(selectedSongBpmIndex);
+  selectedSongSpeedIndex = clamp(currentSongIndex, 0, Math.max(0, songs.length - 1));
+  select.value = String(selectedSongSpeedIndex);
 }
 
 function getSongSpeedAtIndex(index) {
   const song = songs[index];
-  if (!song) return globalBpm;
-  const value = Number(viewerSongBpms[song.id]);
-  return Number.isFinite(value) ? clampBpm(value) : globalBpm;
+  if (!song) return globalSpeed;
+  const value = Number(viewerSongSpeeds[song.id]);
+  return Number.isFinite(value) ? clamp(value, MIN_SPEED, MAX_SPEED) : globalSpeed;
 }
 
 function syncSelectedSongSpeedEditor() {
-  const index = clamp(Number(selectedSongBpmIndex), 0, Math.max(0, songs.length - 1));
-  selectedSongBpmIndex = index;
+  const index = clamp(Number(selectedSongSpeedIndex), 0, Math.max(0, songs.length - 1));
+  selectedSongSpeedIndex = index;
 
   if (els.songSpeedSelect) els.songSpeedSelect.value = String(index);
   if (els.songSpeedInput) els.songSpeedInput.value = String(getSongSpeedAtIndex(index));
@@ -1393,33 +1376,33 @@ function closeSongSpeedPopover() {
 
 function setCurrentSongSpeed(value) {
   if (!songs.length) return;
-  const index = clamp(Number(selectedSongBpmIndex), 0, songs.length - 1);
+  const index = clamp(Number(selectedSongSpeedIndex), 0, songs.length - 1);
   const song = songs[index];
-  const bpm = clampBpm(value);
+  const speed = clamp(Math.round(Number(value) || globalSpeed), MIN_SPEED, MAX_SPEED);
 
-  viewerSongBpms[song.id] = bpm;
-  viewerAllBpm = null;
+  viewerSongSpeeds[song.id] = speed;
+  viewerAllSpeed = null;
   saveViewerSettings();
-  if (els.songSpeedInput) els.songSpeedInput.value = String(bpm);
+  if (els.songSpeedInput) els.songSpeedInput.value = String(speed);
   updateUI(false);
-  showToast(`Для «${song.title || "песни"}» установлен темп ${bpm} BPM.`);
+  showToast(`Для «${song.title || "песни"}» установлено ${speed} px/с.`);
 }
 
 function resetCurrentSongSpeed() {
   if (!songs.length) return;
-  const index = clamp(Number(selectedSongBpmIndex), 0, songs.length - 1);
+  const index = clamp(Number(selectedSongSpeedIndex), 0, songs.length - 1);
   const song = songs[index];
-  delete viewerSongBpms[song.id];
-  viewerAllBpm = null;
+  delete viewerSongSpeeds[song.id];
+  viewerAllSpeed = null;
   saveViewerSettings();
-  const bpm = globalBpm;
-  if (els.songSpeedInput) els.songSpeedInput.value = String(bpm);
+  const speed = globalSpeed;
+  if (els.songSpeedInput) els.songSpeedInput.value = String(speed);
   updateUI(false);
-  showToast(`Для «${song.title || "песни"}» используется общий темп ${bpm} BPM.`);
+  showToast(`Для «${song.title || "песни"}» используется общая скорость ${speed} px/с.`);
 }
 
 function changeCurrentSongSpeed(delta) {
-  const current = getSongSpeedAtIndex(selectedSongBpmIndex);
+  const current = getSongSpeedAtIndex(selectedSongSpeedIndex);
   setCurrentSongSpeed(current + delta);
 }
 
@@ -1686,7 +1669,7 @@ function updateUI(renderFont = true) {
   const customCurrentSpeed = getCurrentSongCustomSpeed();
   if (els.songSpeedPopover?.classList.contains("hidden")) {
     if (els.songSpeedInput && document.activeElement !== els.songSpeedInput) {
-      els.songSpeedInput.value = String(customCurrentSpeed ?? globalBpm);
+      els.songSpeedInput.value = String(customCurrentSpeed ?? globalSpeed);
     }
   } else {
     syncSelectedSongSpeedEditor();
@@ -1698,10 +1681,10 @@ function updateUI(renderFont = true) {
   }
 
   if (els.globalSpeedValue) {
-    els.globalSpeedValue.textContent = globalBpm;
+    els.globalSpeedValue.textContent = globalSpeed;
   }
   if (els.globalSpeedInput && document.activeElement !== els.globalSpeedInput) {
-    els.globalSpeedInput.value = String(globalBpm);
+    els.globalSpeedInput.value = String(globalSpeed);
   }
 
   if (els.fontSizeValue) {
@@ -1847,13 +1830,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  els.speedMinus?.addEventListener("click", () => changeGlobalBpm(-1));
-  els.speedPlus?.addEventListener("click", () => changeGlobalBpm(1));
-  els.globalSpeedInput?.addEventListener("change", () => setGlobalBpm(els.globalSpeedInput.value));
+  els.speedMinus?.addEventListener("click", () => changeGlobalSpeed(-1));
+  els.speedPlus?.addEventListener("click", () => changeGlobalSpeed(1));
+  els.globalSpeedInput?.addEventListener("change", () => setGlobalSpeed(els.globalSpeedInput.value));
   els.globalSpeedInput?.addEventListener("keydown", event => {
     if (event.key === "Enter") {
       event.preventDefault();
-      setGlobalBpm(els.globalSpeedInput.value);
+      setGlobalSpeed(els.globalSpeedInput.value);
       els.globalSpeedInput.blur();
     }
   });
@@ -1861,7 +1844,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   els.songSpeedButton?.addEventListener("click", openSongSpeedPopover);
   els.songSpeedSelect?.addEventListener("change", () => {
-    selectedSongBpmIndex = Number(els.songSpeedSelect.value);
+    selectedSongSpeedIndex = Number(els.songSpeedSelect.value);
     syncSelectedSongSpeedEditor();
   });
   els.songSpeedSave?.addEventListener("click", () => {
@@ -1888,8 +1871,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   bindLongPress(els.fontMinus, () => changeFontSize(-1));
   bindLongPress(els.fontPlus, () => changeFontSize(1));
-  bindLongPress(els.speedMinus, () => changeGlobalBpm(-1));
-  bindLongPress(els.speedPlus, () => changeGlobalBpm(1));
+  bindLongPress(els.speedMinus, () => changeGlobalSpeed(-1));
+  bindLongPress(els.speedPlus, () => changeGlobalSpeed(1));
 
   els.playButton?.addEventListener("click", play);
   els.pauseButton?.addEventListener("click", pause);

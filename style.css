@@ -1818,3 +1818,11 @@ body[data-page="program"] .program-page {
     padding-top: calc(var(--viewer-header-height, 260px) + 14px);
   }
 }
+
+/* Fix: vertically center the "Редактировать" link inside the program card. */
+.program-card-actions .edit-program-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Worship Scroll</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- =========================
+       CONTROL PANEL
+  ========================== -->
+
+  <header class="control-panel">
+
+    <div class="top-row">
+
+      <div class="brand">
+        <div class="brand-name">WORSHIP</div>
+        <div class="brand-subtitle">SCROLL</div>
+      </div>
+
+      <div class="status-block">
+        <span id="status">Готово</span>
+        <span class="status-dot"></span>
+      </div>
+
+    </div>
+
+
+    <div class="controls-row">
+
+      <!-- FONT SIZE -->
+
+      <div class="control-group">
+
+        <button id="fontMinus" class="small-button">
+          A−
+        </button>
+
+        <span id="fontSize">
+          22 px
+        </span>
+
+        <button id="fontPlus" class="small-button">
+          A+
+        </button>
+
+      </div>
+
+
+      <!-- GLOBAL SPEED -->
+
+      <div class="control-group speed-control">
+
+        <button
+          id="globalSpeedMinus"
+          class="small-button"
+        >
+          −
+        </button>
+
+        <input
+          id="globalSpeed"
+          type="number"
+          min="1"
+          max="100"
+          value="18"
+        >
+
+        <button
+          id="globalSpeedPlus"
+          class="small-button"
+        >
+          +
+        </button>
+
+        <button
+          id="applyAll"
+          class="apply-button"
+        >
+          Применить ко всем
+        </button>
+
+      </div>
+
+
+      <!-- PLAYBACK -->
+
+      <div class="control-group playback">
+
+        <button
+          id="playButton"
+          class="primary-button"
+        >
+          ▶ Play
+        </button>
+
+        <button
+          id="pauseButton"
+          class="secondary-button"
+        >
+          ❚❚ Pause
+        </button>
+
+        <button
+          id="resetButton"
+          class="secondary-button"
+        >
+          ↺ Reset
+        </button>
+
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <!-- =========================
+       FLOATING NAVIGATION
+  ========================== -->
+
+  <nav class="floating-navigation">
+
+    <button
+      id="prevSong"
+      class="nav-button"
+      title="Предыдущая песня"
+    >
+      ↑
+    </button>
+
+    <div
+      id="songCounter"
+      class="song-counter"
+    >
+      00 / 00
+    </div>
+
+    <button
+      id="nextSong"
+      class="nav-button"
+      title="Следующая песня"
+    >
+      ↓
+    </button>
+
+  </nav>
+
+
+  <!-- =========================
+       MAIN
+  ========================== -->
+
+  <main>
+
+    <!-- =========================
+         SONG EDITOR
+    ========================== -->
+
+    <section class="editor-section">
+
+      <div class="editor-header">
+
+        <div>
+
+          <h1>Песни</h1>
+
+          <p>
+            Вставляйте текст с аккордами прямо из Word или Заметок
+          </p>
+
+        </div>
+
+
+        <button
+          id="addSongButton"
+          class="add-song-button"
+        >
+
+          <span class="plus-icon">
+            ＋
+          </span>
+
+          <span>
+            Добавить песню
+          </span>
+
+        </button>
+
+      </div>
+
+
+      <div
+        id="songEditors"
+        class="song-editors"
+      ></div>
+
+    </section>
+
+
+    <!-- =========================
+         SONG PROGRAM
+    ========================== -->
+
+    <div id="program"></div>
+
+  </main>
+
+
+  <script src="script.js"></script>
+
+</body>
+</html>

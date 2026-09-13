@@ -449,6 +449,7 @@ button:disabled {
 body[data-page="program"] {
   overflow: hidden;
   overscroll-behavior: none;
+  touch-action: pan-y;
 }
 
 .program-page {
@@ -466,6 +467,7 @@ body[data-page="program"] {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   overscroll-behavior-y: contain;
   scrollbar-width: thin;
   padding-right: 2px;
@@ -1287,10 +1289,11 @@ a {
     max-width: 100%;
     font-size: var(--lyrics-font-size);
     line-height: 1.5;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-    padding-right: 4px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    overflow-x: hidden;
+    padding-right: 2px;
   }
 
   .song-navigation {
@@ -1350,5 +1353,215 @@ a {
 
   .playback button {
     font-size: 11px;
+  }
+}
+
+/* =========================================================
+   v7 — focused mobile viewer + document scrolling
+   ========================================================= */
+body[data-page="program"] {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-x: none;
+}
+
+body[data-page="program"] .program-page {
+  height: auto;
+  min-height: 100vh;
+  display: block;
+  overflow: visible;
+  padding-bottom: 80px;
+}
+
+body[data-page="program"] .program-scroll {
+  overflow: visible;
+  min-height: 0;
+  padding: 0;
+  -webkit-overflow-scrolling: auto;
+  touch-action: pan-y;
+}
+
+body[data-page="program"] .program-hero {
+  position: relative;
+}
+
+@media (max-width: 760px) {
+  body[data-page="program"] .control-panel {
+    padding: 8px 10px 10px;
+  }
+
+  body[data-page="program"] .control-panel .top-row {
+    margin-bottom: 7px;
+  }
+
+  body[data-page="program"] .brand-name {
+    font-size: 14px;
+  }
+
+  body[data-page="program"] .brand-subtitle {
+    font-size: 9px;
+  }
+
+  body[data-page="program"] .program-page {
+    width: 100%;
+    padding: 148px 10px 50px;
+  }
+
+  /* Compact program identity: title + date, no extra card/action area. */
+  body[data-page="program"] .program-hero {
+    display: block;
+    margin: 0 0 14px;
+    padding: 8px 4px 12px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  body[data-page="program"] .program-hero h1 {
+    margin: 2px 0 3px;
+    font-size: clamp(22px, 6vw, 30px);
+    line-height: 1.08;
+  }
+
+  body[data-page="program"] .program-hero p {
+    font-size: 14px;
+  }
+
+  body[data-page="program"] .program-actions {
+    display: none;
+  }
+
+  /* Viewer controls: two compact setting groups + two playback rows. */
+  body[data-page="program"] .controls-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    overflow: visible;
+  }
+
+  body[data-page="program"] .control-group {
+    width: 100%;
+  }
+
+  body[data-page="program"] .control-label {
+    font-size: 9px;
+    letter-spacing: .02em;
+  }
+
+  body[data-page="program"] .control-buttons {
+    gap: 3px;
+  }
+
+  body[data-page="program"] .controls-row .small-button {
+    min-width: 34px;
+    min-height: 36px;
+    padding: 0 5px;
+  }
+
+  body[data-page="program"] .controls-row .value-display {
+    min-width: 34px;
+    font-size: 12px;
+  }
+
+  body[data-page="program"] .speed-control .compact {
+    display: none;
+  }
+
+  body[data-page="program"] .playback {
+    grid-column: 1 / -1;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 5px;
+    margin: 0;
+    padding: 0;
+  }
+
+  body[data-page="program"] .playback button {
+    min-height: 40px;
+    padding: 0 5px;
+    font-size: 12px;
+  }
+
+  /* The song itself gets almost all available screen width. */
+  body[data-page="program"] .song {
+    margin: 0 34px 22px 0;
+    padding: 18px 14px 22px;
+    border-radius: 13px;
+  }
+
+  body[data-page="program"] .song-header {
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    gap: 5px;
+  }
+
+  body[data-page="program"] .song-number {
+    font-size: 11px;
+  }
+
+  body[data-page="program"] .song-title {
+    font-size: 20px;
+    line-height: 1.12;
+  }
+
+  body[data-page="program"] .song-speed-badge {
+    font-size: 10px;
+  }
+
+  /* Preserve chord spacing but never force the entire page wider than the phone. */
+  body[data-page="program"] .lyrics-text {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+    font-size: var(--lyrics-font-size);
+    line-height: 1.48;
+    white-space: pre-wrap;
+    overflow-wrap: normal;
+    word-break: normal;
+    overflow-x: hidden;
+  }
+
+  body[data-page="program"] .song-navigation {
+    right: 3px;
+    gap: 4px;
+  }
+
+  body[data-page="program"] .nav-button {
+    width: 34px;
+    min-height: 34px;
+    border-radius: 9px;
+  }
+
+  body[data-page="program"] .song-counter {
+    min-width: 40px;
+    padding: 5px 3px;
+    font-size: 9px;
+    border-radius: 7px;
+  }
+
+  body[data-page="program"] .program-page .song {
+    scroll-margin-top: 155px;
+  }
+}
+
+@media (max-width: 390px) {
+  body[data-page="program"] .program-page {
+    padding-top: 145px;
+  }
+
+  body[data-page="program"] .controls-row .small-button {
+    min-width: 31px;
+    min-height: 34px;
+  }
+
+  body[data-page="program"] .playback button {
+    min-height: 38px;
+    font-size: 11px;
+  }
+
+  body[data-page="program"] .song {
+    margin-right: 31px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 }

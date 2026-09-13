@@ -145,6 +145,7 @@ function bindCommonEvents() {
     }
   }, { passive: true });
 
+
   els.authButton?.addEventListener("click", openAuthModal);
   els.logoutButton?.addEventListener("click", logout);
 
@@ -924,7 +925,15 @@ function createEndSpacer() {
    ========================================================= */
 
 function getScrollContainer() {
-  return els.programScroll || null;
+  // Use the document as the scroll surface. The header is fixed, so the
+  // musician sees only the song content moving while Safari/macOS keep
+  // their native scrolling behavior.
+  return document.scrollingElement || document.documentElement;
+}
+
+function getViewerHeaderOffset() {
+  const header = document.querySelector(".control-panel");
+  return (header?.getBoundingClientRect().height || 0) + 10;
 }
 
 function detectCurrentSong() {
@@ -934,18 +943,18 @@ function detectCurrentSong() {
   }
 
   const scroller = getScrollContainer();
-  if (!scroller) {
+  const songElements = document.querySelectorAll("#program .song");
+  if (!scroller || !songElements.length) {
     currentSongIndex = 0;
     return null;
   }
 
-  const songElements = scroller.querySelectorAll(".song");
+  const line = getViewerHeaderOffset() + SWITCH_LINE;
   let detected = 0;
 
   for (let i = 0; i < songElements.length; i++) {
-    const top = songElements[i].offsetTop - scroller.scrollTop;
-
-    if (top <= SWITCH_LINE) {
+    const top = songElements[i].getBoundingClientRect().top;
+    if (top <= line) {
       detected = i;
     } else {
       break;
@@ -971,11 +980,8 @@ function getCurrentSpeed() {
 }
 
 function hasProgramEnded() {
-  if (!songs.length) return true;
-
   const scroller = getScrollContainer();
-  if (!scroller) return true;
-
+  if (!songs.length || !scroller) return true;
   return scroller.scrollTop >= scroller.scrollHeight - scroller.clientHeight - 2;
 }
 
@@ -985,23 +991,29 @@ function scrollLoop(timestamp) {
   const scroller = getScrollContainer();
   if (!scroller) {
     pause();
-    showToast("Не найдена область прокрутки.");
     return;
   }
 
-  if (lastTimestamp === null) {
-    lastTimestamp = timestamp;
-  }
+  if (lastTimestamp === null) lastTimestamp = timestamp;
 
   const deltaTime = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
   lastTimestamp = timestamp;
 
-  detectCurrentSong();
-
   const speed = getCurrentSpeed();
-  scroller.scrollTop += speed * deltaTime;
+  const before = scroller.scrollTop;
+  const next = Math.min(
+    before + speed * deltaTime,
+    scroller.scrollHeight - scroller.clientHeight
+  );
 
-  detectCurrentSong();
+  scroller.scrollTop = next;
+
+  // Safari can coalesce writes while a smooth scroll is active. We never use
+  // smooth scrolling during playback, so each frame owns the exact position.
+  if (scroller.scrollTop !== before) {
+    detectCurrentSong();
+    updateUI(false);
+  }
 
   if (hasProgramEnded()) {
     pause();
@@ -1013,17 +1025,17 @@ function scrollLoop(timestamp) {
 
 function scrollToSongInstant(index) {
   const scroller = getScrollContainer();
-  const songElements = scroller?.querySelectorAll(".song");
+  const songElements = document.querySelectorAll("#program .song");
   const targetSong = songElements?.[index];
 
   if (!scroller || !targetSong) return false;
 
-  scroller.scrollTo({
-    top: Math.max(0, targetSong.offsetTop - SWITCH_LINE),
-    behavior: "auto"
-  });
+  const absoluteTop = targetSong.getBoundingClientRect().top + scroller.scrollTop;
+  const targetTop = Math.max(0, absoluteTop - getViewerHeaderOffset());
 
+  scroller.scrollTo({ top: targetTop, behavior: "auto" });
   currentSongIndex = index;
+  updateUI(false);
   return true;
 }
 
@@ -1035,23 +1047,15 @@ function play() {
 
   if (isPlaying) return;
 
-  const scroller = getScrollContainer();
-  if (!scroller) {
-    showToast("Не найдена область прокрутки.");
-    return;
-  }
-
-  // Always start from the beginning of the first song when the viewer is
-  // above the first song. This also gives the user an immediate visual cue.
-  const firstSong = scroller.querySelector(".song");
-  if (firstSong && scroller.scrollTop < firstSong.offsetTop - SWITCH_LINE) {
-    scrollToSongInstant(0);
-  }
+  // Always anchor playback to the current song's TITLE, not arbitrary lyrics.
+  // From the top of a program this means the first song title.
+  detectCurrentSong();
+  scrollToSongInstant(currentSongIndex);
 
   isPlaying = true;
   lastTimestamp = null;
   animationFrameId = requestAnimationFrame(scrollLoop);
-  updateUI();
+  updateUI(false);
 }
 
 function pause() {
@@ -1063,16 +1067,14 @@ function pause() {
     animationFrameId = null;
   }
 
-  updateUI();
+  updateUI(false);
 }
 
 function reset() {
   pause();
-
   if (!songs.length) return;
-
   scrollToSongInstant(0);
-  updateUI();
+  updateUI(false);
 }
 
 /* =========================================================
@@ -1083,27 +1085,18 @@ function goToSong(index) {
   if (!songs.length) return;
 
   const targetIndex = clamp(index, 0, songs.length - 1);
-  const scroller = getScrollContainer();
-  const songElements = scroller?.querySelectorAll(".song");
+  const songElements = document.querySelectorAll("#program .song");
   const targetSong = songElements?.[targetIndex];
+  const scroller = getScrollContainer();
 
   if (!scroller || !targetSong) return;
 
+  const absoluteTop = targetSong.getBoundingClientRect().top + scroller.scrollTop;
+  const target = Math.max(0, absoluteTop - getViewerHeaderOffset());
+
   currentSongIndex = targetIndex;
-
-  const maxScroll = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
-  const target = clamp(
-    targetSong.offsetTop - SWITCH_LINE,
-    0,
-    maxScroll
-  );
-
-  scroller.scrollTo({
-    top: target,
-    behavior: "smooth"
-  });
-
-  updateUI();
+  scroller.scrollTo({ top: target, behavior: "smooth" });
+  updateUI(false);
 }
 
 function handleKeyboard(event) {
@@ -1426,7 +1419,7 @@ function toggleTheme() {
    UI
    ========================================================= */
 
-function updateUI() {
+function updateUI(renderFont = true) {
   if (pageType !== "program") return;
 
   detectCurrentSong();
@@ -1467,7 +1460,7 @@ function updateUI() {
       isPlaying ? "▶︎ Идёт" : "▶︎ Начать";
   }
 
-  updateFontSize();
+  if (renderFont) updateFontSize();
 }
 
 /* =========================================================

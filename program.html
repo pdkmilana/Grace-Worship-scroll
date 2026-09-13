@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>GRACE WORSHIP — SCROLL</title>
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body data-page="program">
 
@@ -21,8 +21,6 @@
       <div class="top-right">
         <button id="themeToggle" class="theme-toggle" title="Переключить тему" aria-label="Переключить тему">🌙</button>
         <button id="editProgramButton" class="secondary-button hidden">Редактировать</button>
-        <button id="authButton" class="secondary-button">Войти</button>
-        <button id="logoutButton" class="secondary-button hidden">Выйти</button>
       </div>
     </div>
 
@@ -62,9 +60,7 @@
         <p id="programInfo"></p>
       </div>
 
-      <div class="program-actions">
-        <button id="copyProgramLinkButton" class="secondary-button">Скопировать ссылку</button>
-      </div>
+
     </section>
 
     <div id="songNavigation" class="song-navigation hidden">
@@ -73,7 +69,7 @@
       <button id="nextSongButton" class="nav-button" title="Следующая песня">↓</button>
     </div>
 
-    <div id="programScroll" class="program-scroll" tabindex="0" aria-label="Прокручиваемая область песен">
+    <div id="programScroll" class="program-scroll" aria-label="Песни программы">
       <section id="program"></section>
 
       <section id="emptyState" class="empty-state hidden">
@@ -114,6 +110,6 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=4"></script>
+  <script src="script.js?v=7"></script>
 </body>
 </html>

@@ -1024,3 +1024,283 @@ button:disabled {
     font-size: 10px;
   }
 }
+
+
+/* =========================================================
+   Mobile / touch optimization
+   ========================================================= */
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+button,
+a,
+input,
+textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.lyrics-text {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  overscroll-behavior-x: contain;
+}
+
+/* =========================================================
+   Edit page
+   ========================================================= */
+
+.edit-page {
+  padding: 104px 0 70px;
+}
+
+.edit-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 26px;
+  margin-bottom: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.edit-hero h1 {
+  margin: 5px 0 7px;
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.edit-hero p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.editor-panel {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* Keep the viewer focused on the songs, not on editing controls. */
+.program-page .song {
+  scroll-margin-top: 160px;
+}
+
+@media (max-width: 760px) {
+  .simple-header {
+    padding: 10px 12px;
+  }
+
+  .control-panel {
+    padding: 10px 12px 12px;
+  }
+
+  .control-panel .top-row {
+    margin-bottom: 10px;
+  }
+
+  .top-row {
+    gap: 8px;
+  }
+
+  .brand-name {
+    font-size: 15px;
+  }
+
+  .brand-subtitle {
+    font-size: 10px;
+  }
+
+  .top-right {
+    gap: 5px;
+  }
+
+  .top-right .secondary-button {
+    min-height: 36px;
+    padding: 0 9px;
+    font-size: 12px;
+  }
+
+  .theme-toggle,
+  .back-button {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
+  }
+
+  /* No horizontal control strip on phones. */
+  .controls-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+    gap: 8px;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .control-group {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .control-buttons {
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .control-buttons .value-display {
+    min-width: 42px;
+    font-size: 12px;
+  }
+
+  .controls-row .small-button {
+    min-width: 36px;
+    min-height: 38px;
+    padding: 0 7px;
+  }
+
+  .speed-control .control-buttons {
+    flex-wrap: nowrap;
+  }
+
+  .speed-control .compact {
+    min-width: 0;
+    padding: 0 7px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .playback {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    margin-left: 0;
+    padding-top: 0;
+    gap: 6px;
+  }
+
+  .playback button {
+    width: 100%;
+    min-width: 0;
+    padding: 0 6px;
+    min-height: 40px;
+    font-size: 12px;
+  }
+
+  .program-page {
+    padding-top: 214px;
+  }
+
+  .program-hero {
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+
+  .program-hero h1 {
+    font-size: 23px;
+    overflow-wrap: anywhere;
+  }
+
+  .program-actions .secondary-button {
+    width: 100%;
+  }
+
+  .song {
+    margin-right: 42px;
+    margin-bottom: 24px;
+    padding: 20px 16px;
+  }
+
+  .song-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .song-title {
+    font-size: 20px;
+  }
+
+  .lyrics-text {
+    max-width: 100%;
+    font-size: var(--lyrics-font-size);
+    line-height: 1.5;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .song-navigation {
+    right: 4px;
+  }
+
+  .nav-button {
+    width: 38px;
+    min-height: 38px;
+  }
+
+  .edit-page {
+    padding-top: 86px;
+  }
+
+  .edit-hero {
+    display: block;
+    padding: 20px;
+  }
+
+  .edit-hero h1 {
+    font-size: 24px;
+  }
+
+  .edit-hero .primary-button {
+    width: 100%;
+    margin-top: 16px;
+  }
+
+  .program-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-actions {
+    grid-column: auto;
+  }
+
+  .editor-card {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 390px) {
+  .top-right .secondary-button {
+    padding: 0 7px;
+    font-size: 11px;
+  }
+
+  .controls-row {
+    gap: 6px;
+  }
+
+  .speed-control .compact {
+    font-size: 9px;
+    padding: 0 5px;
+  }
+
+  .playback button {
+    font-size: 11px;
+  }
+}

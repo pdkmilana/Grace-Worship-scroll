@@ -3,17 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>GRACE WORSHIP — SCROLL</title>
+  <title>Редактирование — GRACE WORSHIP</title>
   <link rel="stylesheet" href="style.css?v=4">
 </head>
-<body data-page="home">
+<body data-page="edit">
 
   <header class="simple-header">
     <div class="top-row">
-      <a class="brand brand-link" href="index.html">
-        <div class="brand-name">GRACE WORSHIP</div>
-        <div class="brand-subtitle">SCROLL</div>
-      </a>
+      <div class="brand-row">
+        <a id="backToProgramButton" class="back-button" href="index.html" title="Назад" aria-label="Назад">←</a>
+        <a class="brand brand-link" href="index.html">
+          <div class="brand-name">GRACE WORSHIP</div>
+          <div class="brand-subtitle">SCROLL</div>
+        </a>
+      </div>
 
       <div class="top-right">
         <button id="themeToggle" class="theme-toggle" title="Переключить тему" aria-label="Переключить тему">🌙</button>
@@ -23,47 +26,48 @@
     </div>
   </header>
 
-  <main class="page home-page">
-    <section class="home-hero">
+  <main class="page edit-page">
+    <section class="edit-hero">
       <div>
-        <div class="eyebrow">WORSHIP SET</div>
-        <h1>Программы служения</h1>
-        <p>Выберите программу, чтобы открыть песни и аккорды.</p>
+        <div class="eyebrow">EDITOR</div>
+        <h1 id="editProgramTitle">Загрузка…</h1>
+        <p id="editProgramInfo">Изменения сохраняются в программе.</p>
       </div>
+      <a id="openProgramButton" class="primary-button" href="#">Открыть программу</a>
     </section>
 
-    <section class="programs-section">
-      <div class="section-head">
-        <div>
-          <div class="section-kicker">PROGRAMS</div>
-          <h2>Сохранённые программы</h2>
+    <section id="editorSection" class="editor-section">
+      <div class="editor-panel">
+        <div class="program-editor">
+          <div class="editor-field">
+            <label for="programNameInput">Название программы</label>
+            <input id="programNameInput" class="editor-input" type="text" placeholder="Например: Восхваление 13.09.2026">
+          </div>
+
+          <div class="editor-field">
+            <label for="programDateInput">Дата</label>
+            <input id="programDateInput" class="editor-input" type="date">
+          </div>
+
+          <div class="editor-actions">
+            <button id="saveProgramButton" class="primary-button">Сохранить программу</button>
+            <button id="deleteProgramButton" class="delete-button">Удалить программу</button>
+          </div>
         </div>
 
-        <button id="createProgramButton" class="primary-button hidden">
-          ＋ Новое служение
-        </button>
-      </div>
-
-      <div id="programList" class="program-list"></div>
-
-      <div id="noPrograms" class="empty-state hidden">
-        <h2>Программ пока нет</h2>
-        <p>Войдите, чтобы создать первую программу служения.</p>
+        <button id="addSongButton" class="add-song-button">＋ Добавить песню</button>
+        <div id="songEditors" class="song-editors"></div>
       </div>
     </section>
   </main>
 
   <div id="authModal" class="modal hidden" aria-hidden="true">
     <div class="modal-backdrop" data-close-auth></div>
-
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
       <button id="closeAuthButton" class="modal-close" aria-label="Закрыть">×</button>
-
       <div class="eyebrow">ACCOUNT</div>
       <h2 id="authTitle">Вход</h2>
-      <p class="modal-description">
-        Войдите, чтобы создавать и редактировать программы служений.
-      </p>
+      <p class="modal-description">Войдите, чтобы редактировать программы служений.</p>
 
       <label>
         Email
@@ -79,7 +83,6 @@
         <button id="loginButton" class="primary-button">Войти</button>
         <button id="signupButton" class="secondary-button">Регистрация</button>
       </div>
-
       <p id="authMessage" class="auth-message"></p>
     </div>
   </div>

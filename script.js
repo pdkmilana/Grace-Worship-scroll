@@ -18,6 +18,8 @@ const END_PADDING_RATIO = 1;
 
 const FONT_STORAGE_KEY = "worship-scroll-font-size";
 const THEME_STORAGE_KEY = "worship-scroll-theme";
+const VIEW_SPEED_KEY_PREFIX = "worship-scroll-view-speed:";
+const VIEW_APPLY_ALL_KEY_PREFIX = "worship-scroll-view-all:";
 
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
@@ -32,6 +34,7 @@ let songs = [];
 
 let currentSongIndex = 0;
 let globalSpeed = DEFAULT_SPEED;
+let viewerAllSpeed = null;
 let fontSize = Number(localStorage.getItem(FONT_STORAGE_KEY)) || 22;
 
 let isPlaying = false;
@@ -56,6 +59,10 @@ async function init() {
 
   if (pageType === "program") {
     await initProgramPage();
+  }
+
+  if (pageType === "edit") {
+    await initEditPage();
   }
 }
 
@@ -84,6 +91,11 @@ function cacheElements() {
     "programTitle",
     "programInfo",
     "copyProgramLinkButton",
+    "editProgramButton",
+    "backToProgramButton",
+    "editProgramTitle",
+    "editProgramInfo",
+    "openProgramButton",
 
     "fontMinus",
     "fontPlus",
@@ -143,6 +155,10 @@ function bindCommonEvents() {
     }
 
     if (pageType === "program") {
+      updateAccountUI();
+    }
+
+    if (pageType === "edit") {
       renderEditors();
     }
   });
@@ -209,6 +225,14 @@ function renderPrograms() {
           >
             Открыть
           </a>
+
+          ${currentUser ? `
+          <a
+            class="secondary-button"
+            href="edit.html?program=${encodeURIComponent(program.id)}"
+          >
+            Редактировать
+          </a>` : ""}
 
           <button
             class="secondary-button copy-link-button"
@@ -285,6 +309,25 @@ async function initProgramPage() {
   updateAccountUI();
 }
 
+async function initEditPage() {
+  await checkSession();
+
+  if (!currentUser) {
+    window.location.replace("index.html");
+    return;
+  }
+
+  const programId = new URLSearchParams(window.location.search).get("program");
+
+  if (!programId) {
+    window.location.replace("index.html");
+    return;
+  }
+
+  await loadProgram(programId);
+  updateAccountUI();
+}
+
 async function loadProgram(programId) {
   const { data: program, error: programError } = await supabaseClient
     .from("programs")
@@ -313,6 +356,22 @@ async function loadProgram(programId) {
     els.programInfo.textContent = formatDate(program.service_date) || "Дата не указана";
   }
 
+  if (els.editProgramTitle) {
+    els.editProgramTitle.textContent = program.title || "Без названия";
+  }
+
+  if (els.editProgramInfo) {
+    els.editProgramInfo.textContent = formatDate(program.service_date) || "Дата не указана";
+  }
+
+  if (els.openProgramButton) {
+    els.openProgramButton.href = `program.html?program=${encodeURIComponent(program.id)}`;
+  }
+
+  if (els.backToProgramButton) {
+    els.backToProgramButton.href = `program.html?program=${encodeURIComponent(program.id)}`;
+  }
+
   if (els.programNameInput) {
     els.programNameInput.value = program.title || "";
   }
@@ -322,9 +381,16 @@ async function loadProgram(programId) {
   }
 
   await loadProgramSongs(program.id);
-  renderProgram();
-  renderEditors();
-  updateUI();
+  loadViewerSettings();
+
+  if (pageType === "program") {
+    renderProgram();
+    updateUI();
+  }
+
+  if (pageType === "edit") {
+    renderEditors();
+  }
 }
 
 async function loadProgramSongs(programId) {
@@ -387,7 +453,7 @@ async function loadProgramSongs(programId) {
    ========================================================= */
 
 function renderEditors() {
-  if (pageType !== "program" || !els.editorSection) return;
+  if (pageType !== "edit" || !els.editorSection) return;
 
   if (!currentUser || !currentProgram) {
     els.editorSection.classList.add("hidden");
@@ -524,8 +590,10 @@ async function saveProgram() {
   currentProgram = data;
 
   document.title = `${data.title} — GRACE WORSHIP`;
-  els.programTitle.textContent = data.title;
-  els.programInfo.textContent = formatDate(data.service_date) || "Дата не указана";
+  if (els.programTitle) els.programTitle.textContent = data.title;
+  if (els.programInfo) els.programInfo.textContent = formatDate(data.service_date) || "Дата не указана";
+  if (els.editProgramTitle) els.editProgramTitle.textContent = data.title;
+  if (els.editProgramInfo) els.editProgramInfo.textContent = formatDate(data.service_date) || "Дата не указана";
 
   showToast("Программа сохранена.");
 }
@@ -745,9 +813,13 @@ async function saveSongField(element) {
       globalSpeed = song.speed;
     }
 
-    renderProgram();
-    renderEditors();
-    updateUI();
+    if (pageType === "program") {
+      renderProgram();
+      updateUI();
+    }
+    if (pageType === "edit") {
+      renderEditors();
+    }
 
     showToast("Сохранено.");
   } catch (error) {
@@ -775,9 +847,13 @@ async function changeSongSpeed(id, delta) {
 
     globalSpeed = song.speed;
 
-    renderProgram();
-    renderEditors();
-    updateUI();
+    if (pageType === "program") {
+      renderProgram();
+      updateUI();
+    }
+    if (pageType === "edit") {
+      renderEditors();
+    }
   } catch (error) {
     console.error(error);
     showToast("Ошибка сохранения скорости: " + error.message);
@@ -863,7 +939,17 @@ function detectCurrentSong() {
 }
 
 function getCurrentSpeed() {
-  return songs[currentSongIndex]?.speed || DEFAULT_SPEED;
+  if (!songs.length) return DEFAULT_SPEED;
+
+  if (viewerAllSpeed !== null) {
+    return viewerAllSpeed;
+  }
+
+  const firstSpeed = songs[0]?.speed || DEFAULT_SPEED;
+  const currentStoredSpeed = songs[currentSongIndex]?.speed || DEFAULT_SPEED;
+  const offset = globalSpeed - firstSpeed;
+
+  return clamp(currentStoredSpeed + offset, MIN_SPEED, MAX_SPEED);
 }
 
 function hasProgramEnded() {
@@ -890,7 +976,8 @@ function scrollLoop(timestamp) {
   detectCurrentSong();
 
   const speed = getCurrentSpeed();
-  window.scrollBy(0, speed * deltaTime);
+  const scroller = document.scrollingElement || document.documentElement;
+  scroller.scrollTop += speed * deltaTime;
 
   detectCurrentSong();
 
@@ -938,7 +1025,8 @@ function reset() {
 
   const target = firstSong.getBoundingClientRect().top + window.scrollY - SWITCH_LINE;
 
-  window.scrollTo({
+  const scroller = document.scrollingElement || document.documentElement;
+  scroller.scrollTo({
     top: Math.max(0, target),
     behavior: "auto"
   });
@@ -970,7 +1058,8 @@ function goToSong(index) {
   const maxScroll =
     document.documentElement.scrollHeight - window.innerHeight;
 
-  window.scrollTo({
+  const scroller = document.scrollingElement || document.documentElement;
+  scroller.scrollTo({
     top: clamp(target, 0, Math.max(0, maxScroll)),
     behavior: "smooth"
   });
@@ -1009,53 +1098,54 @@ function handleKeyboard(event) {
 
 function changeGlobalSpeed(delta) {
   globalSpeed = clamp(globalSpeed + delta, MIN_SPEED, MAX_SPEED);
+
+  if (viewerAllSpeed !== null) {
+    viewerAllSpeed = globalSpeed;
+  }
+
+  saveViewerSettings();
   updateUI();
 }
 
-async function applySpeedToAll() {
-  if (!songs.length) return;
+function saveViewerSettings() {
+  if (!currentProgram) return;
 
-  if (!currentUser) {
-    openAuthModal();
-    return;
-  }
+  localStorage.setItem(
+    `${VIEW_SPEED_KEY_PREFIX}${currentProgram.id}`,
+    String(globalSpeed)
+  );
 
-  const previous = songs.map(song => song.speed);
+  localStorage.setItem(
+    `${VIEW_APPLY_ALL_KEY_PREFIX}${currentProgram.id}`,
+    viewerAllSpeed === null ? "" : String(viewerAllSpeed)
+  );
+}
 
-  songs.forEach(song => {
-    song.speed = globalSpeed;
-  });
+function loadViewerSettings() {
+  if (!currentProgram) return;
 
-  try {
-    for (const song of songs) {
-      const { error } = await supabaseClient
-        .from("songs")
-        .update({
-          speed: song.speed,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", song.id);
+  const savedSpeed = Number(
+    localStorage.getItem(`${VIEW_SPEED_KEY_PREFIX}${currentProgram.id}`)
+  );
 
-      if (error) throw error;
-    }
+  globalSpeed = savedSpeed
+    ? clamp(savedSpeed, MIN_SPEED, MAX_SPEED)
+    : (songs[0]?.speed || DEFAULT_SPEED);
 
-    renderProgram();
-    renderEditors();
-    updateUI();
+  const savedAll = localStorage.getItem(
+    `${VIEW_APPLY_ALL_KEY_PREFIX}${currentProgram.id}`
+  );
 
-    showToast("Скорость применена ко всем песням.");
-  } catch (error) {
-    console.error(error);
+  viewerAllSpeed = savedAll ? clamp(Number(savedAll), MIN_SPEED, MAX_SPEED) : null;
+}
 
-    songs.forEach((song, index) => {
-      song.speed = previous[index];
-    });
+function applySpeedToAll() {
+  if (!songs.length || pageType !== "program") return;
 
-    renderProgram();
-    renderEditors();
-
-    showToast("Не удалось сохранить скорость: " + error.message);
-  }
+  viewerAllSpeed = globalSpeed;
+  saveViewerSettings();
+  updateUI();
+  showToast(`Скорость ${globalSpeed} px/с применена ко всем песням.`);
 }
 
 function changeFontSize(delta) {
@@ -1105,9 +1195,23 @@ function updateAccountUI() {
 
   if (pageType === "home") {
     els.createProgramButton?.classList.toggle("hidden", !currentUser);
+    renderPrograms();
   }
 
   if (pageType === "program") {
+    els.editProgramButton?.classList.toggle("hidden", !currentUser);
+    if (currentProgram && els.editProgramButton) {
+      els.editProgramButton.onclick = () => {
+        window.location.href = `edit.html?program=${encodeURIComponent(currentProgram.id)}`;
+      };
+    }
+  }
+
+  if (pageType === "edit") {
+    if (!currentUser) {
+      window.location.replace("index.html");
+      return;
+    }
     renderEditors();
   }
 }

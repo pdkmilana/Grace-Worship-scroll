@@ -2,9 +2,9 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>GRACE WORSHIP — SCROLL</title>
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body data-page="program">
 
@@ -12,7 +12,6 @@
     <div class="top-row">
       <div class="brand-row">
         <a class="back-button" href="index.html" title="К программам" aria-label="К программам">←</a>
-
         <a class="brand brand-link" href="index.html">
           <div class="brand-name">GRACE WORSHIP</div>
           <div class="brand-subtitle">SCROLL</div>
@@ -21,6 +20,7 @@
 
       <div class="top-right">
         <button id="themeToggle" class="theme-toggle" title="Переключить тему" aria-label="Переключить тему">🌙</button>
+        <button id="editProgramButton" class="secondary-button hidden">Редактировать</button>
         <button id="authButton" class="secondary-button">Войти</button>
         <button id="logoutButton" class="secondary-button hidden">Выйти</button>
       </div>
@@ -30,18 +30,18 @@
       <div class="control-group">
         <span class="control-label">Размер</span>
         <div class="control-buttons">
-          <button id="fontMinus" class="small-button">A−</button>
+          <button id="fontMinus" class="small-button" aria-label="Уменьшить размер текста">A−</button>
           <span id="fontSizeValue" class="value-display">22 px</span>
-          <button id="fontPlus" class="small-button">A+</button>
+          <button id="fontPlus" class="small-button" aria-label="Увеличить размер текста">A+</button>
         </div>
       </div>
 
-      <div class="control-group">
+      <div class="control-group speed-control">
         <span class="control-label">Скорость</span>
         <div class="control-buttons">
-          <button id="speedMinus" class="small-button">−</button>
+          <button id="speedMinus" class="small-button" aria-label="Уменьшить скорость">−</button>
           <span id="globalSpeedValue" class="value-display">18</span>
-          <button id="speedPlus" class="small-button">+</button>
+          <button id="speedPlus" class="small-button" aria-label="Увеличить скорость">+</button>
           <button id="applySpeedAll" class="secondary-button compact">Применить ко всем</button>
         </div>
       </div>
@@ -55,7 +55,6 @@
   </header>
 
   <main class="page program-page">
-
     <section class="program-hero">
       <div>
         <div class="eyebrow">WORSHIP SET</div>
@@ -68,7 +67,7 @@
       </div>
     </section>
 
-    <div id="songNavigation" class="song-navigation">
+    <div id="songNavigation" class="song-navigation hidden">
       <button id="prevSongButton" class="nav-button" title="Предыдущая песня">↑</button>
       <div class="song-counter" id="songCounter">00 / 00</div>
       <button id="nextSongButton" class="nav-button" title="Следующая песня">↓</button>
@@ -78,35 +77,8 @@
 
     <section id="emptyState" class="empty-state hidden">
       <h2>В этой программе пока нет песен</h2>
-      <p>Если вы создаёте программу, войдите в аккаунт и добавьте песни ниже.</p>
+      <p>Ведущий может добавить песни через раздел редактирования.</p>
     </section>
-
-    <section id="editorSection" class="editor-section hidden">
-      <details id="editorDetails">
-        <summary>Редактирование программы</summary>
-
-        <div class="program-editor">
-          <div class="editor-field">
-            <label for="programNameInput">Название программы</label>
-            <input id="programNameInput" class="editor-input" type="text" placeholder="Например: Восхваление 13.09.2026">
-          </div>
-
-          <div class="editor-field">
-            <label for="programDateInput">Дата</label>
-            <input id="programDateInput" class="editor-input" type="date">
-          </div>
-
-          <div class="editor-actions">
-            <button id="saveProgramButton" class="primary-button">Сохранить программу</button>
-            <button id="deleteProgramButton" class="delete-button">Удалить программу</button>
-          </div>
-        </div>
-
-        <button id="addSongButton" class="add-song-button">＋ Добавить песню</button>
-        <div id="songEditors" class="song-editors"></div>
-      </details>
-    </section>
-
   </main>
 
   <div id="authModal" class="modal hidden" aria-hidden="true">
@@ -114,12 +86,9 @@
 
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
       <button id="closeAuthButton" class="modal-close" aria-label="Закрыть">×</button>
-
       <div class="eyebrow">ACCOUNT</div>
       <h2 id="authTitle">Вход</h2>
-      <p class="modal-description">
-        Войдите, чтобы создавать и редактировать программы служений.
-      </p>
+      <p class="modal-description">Войдите, чтобы редактировать программы служений.</p>
 
       <label>
         Email
@@ -143,6 +112,6 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js?v=3"></script>
+  <script src="script.js?v=4"></script>
 </body>
 </html>

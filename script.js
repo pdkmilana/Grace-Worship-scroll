@@ -2,6 +2,7 @@
    WORSHIP SCROLL
    Dynamic Songs
    Original Chord Formatting
+   Light / Dark Theme
 ========================================================= */
 
 
@@ -60,6 +61,9 @@ const globalSpeedPlus =
 const applyAllButton =
   document.getElementById("applyAll");
 
+const themeToggle =
+  document.getElementById("themeToggle");
+
 
 /* =========================================================
    SETTINGS
@@ -77,27 +81,31 @@ const MAX_FONT_SIZE = 60;
 
 
 /*
-   Невидимая линия,
-   на которой происходит
-   переключение песни.
+   Линия переключения песен.
 */
 
 const SWITCH_LINE = 140;
 
 
 /*
-   Дополнительное пространство
-   после последней песни.
+   Пространство после последней песни.
 */
 
 const END_PADDING_RATIO = 1;
 
+
+/*
+   LocalStorage
+*/
 
 const SONGS_STORAGE_KEY =
   "worship-scroll-songs";
 
 const FONT_STORAGE_KEY =
   "worship-scroll-font-size";
+
+const THEME_STORAGE_KEY =
+  "worship-scroll-theme";
 
 
 /* =========================================================
@@ -121,6 +129,102 @@ let fontSize =
       FONT_STORAGE_KEY
     )
   ) || 22;
+
+
+/*
+   Светлая тема — основная.
+*/
+
+let currentTheme =
+  localStorage.getItem(
+    THEME_STORAGE_KEY
+  ) || "light";
+
+
+/* =========================================================
+   THEME
+========================================================= */
+
+function applyTheme() {
+
+  /*
+     Если тема dark —
+     добавляем класс body.
+  */
+
+  if (
+    currentTheme === "dark"
+  ) {
+
+    document.body.classList.add(
+      "dark-theme"
+    );
+
+    themeToggle.textContent =
+      "☀️";
+
+    themeToggle.title =
+      "Переключить на светлую тему";
+
+    themeToggle.setAttribute(
+      "aria-label",
+      "Переключить на светлую тему"
+    );
+
+  } else {
+
+    document.body.classList.remove(
+      "dark-theme"
+    );
+
+    themeToggle.textContent =
+      "🌙";
+
+    themeToggle.title =
+      "Переключить на тёмную тему";
+
+    themeToggle.setAttribute(
+      "aria-label",
+      "Переключить на тёмную тему"
+    );
+
+  }
+
+
+  /*
+     Сохраняем выбор.
+  */
+
+  localStorage.setItem(
+    THEME_STORAGE_KEY,
+    currentTheme
+  );
+
+}
+
+
+/* =========================================================
+   TOGGLE THEME
+========================================================= */
+
+function toggleTheme() {
+
+  if (
+    currentTheme === "light"
+  ) {
+
+    currentTheme = "dark";
+
+  } else {
+
+    currentTheme = "light";
+
+  }
+
+
+  applyTheme();
+
+}
 
 
 /* =========================================================
@@ -332,10 +436,6 @@ function renderEditors() {
   songEditors.innerHTML = "";
 
 
-  /*
-     Если песен пока нет
-  */
-
   if (!songs.length) {
 
     const empty =
@@ -375,11 +475,6 @@ function renderEditors() {
 
   }
 
-
-  /*
-     Создаём редактор
-     каждой песни
-  */
 
   songs.forEach(
     (song, index) => {
@@ -481,15 +576,6 @@ function renderEditors() {
 
       `;
 
-
-      /*
-         Заполняем значения
-         через DOM.
-
-         Так текст с символами
-         < > & и т.д.
-         не ломает HTML.
-      */
 
       const titleInput =
         editor.querySelector(
@@ -614,16 +700,13 @@ function attachEditorEvents() {
 
 
           /*
-             Здесь сохраняется
-             абсолютно весь текст:
+             Сохраняем оригинальный
+             текст БЕЗ изменений.
 
-             пробелы
-             табы
-             пустые строки
-             переносы
-             скобки
-             тире
-             и т.д.
+             Пробелы.
+             Табы.
+             Переносы.
+             Пустые строки.
           */
 
           songs[index].text =
@@ -786,7 +869,8 @@ function setSongSpeed(
       MIN_SPEED,
       Math.min(
         MAX_SPEED,
-        Number(value) || DEFAULT_SPEED
+        Number(value) ||
+        DEFAULT_SPEED
       )
     );
 
@@ -810,41 +894,29 @@ function setSongSpeed(
    RENDER SONG TEXT
 ========================================================= */
 
-/*
-   ВАЖНО.
-
-   Никакого разбора строк.
-
-   Никаких [G].
-
-   Никакого изменения текста.
-
-   Просто берём оригинальный
-   текст и помещаем его
-   внутрь <pre>.
-
-   Поэтому:
-
-               H
-   Ты нашёл меня, и избавлен я
-      E               F#       H
-   Тобой, Спаситель мой.
-
-   останется именно таким.
-*/
-
 function renderSongText(text) {
 
   if (!text) {
 
     return `
+
       <div class="empty-song">
         Добавьте текст песни
       </div>
+
     `;
 
   }
 
+
+  /*
+     PRE сохраняет исходные:
+
+     пробелы
+     табы
+     переносы
+     пустые строки
+  */
 
   return `
 
@@ -1007,12 +1079,6 @@ function detectCurrentSong() {
   let detected = 0;
 
 
-  /*
-     Ищем последнюю песню,
-     которая пересекла
-     SWITCH_LINE.
-  */
-
   for (
     let i = 0;
     i < songElements.length;
@@ -1128,22 +1194,23 @@ function play() {
   }
 
 
-  /*
-     Если программа закончилась,
-     Play начинает сначала.
-  */
-
   if (
     hasProgramEnded()
   ) {
 
     window.scrollTo({
-      top: 0,
-      behavior: "auto"
+
+      top:
+        0,
+
+      behavior:
+        "auto"
+
     });
 
 
-    currentSongIndex = 0;
+    currentSongIndex =
+      0;
 
   }
 
@@ -1210,12 +1277,18 @@ function reset() {
 
 
   window.scrollTo({
-    top: 0,
-    behavior: "auto"
+
+    top:
+      0,
+
+    behavior:
+      "auto"
+
   });
 
 
-  currentSongIndex = 0;
+  currentSongIndex =
+    0;
 
 
   statusElement.textContent =
@@ -1260,15 +1333,15 @@ function scrollLoop(timestamp) {
 
 
   /*
-     Определяем текущую песню
+     Определяем текущую песню.
   */
 
   detectCurrentSong();
 
 
   /*
-     Получаем её индивидуальную
-     скорость.
+     Получаем индивидуальную
+     скорость этой песни.
   */
 
   const speed =
@@ -1276,9 +1349,7 @@ function scrollLoop(timestamp) {
 
 
   /*
-     Автоматический скролл.
-
-     speed = px / second
+     Двигаем страницу.
   */
 
   window.scrollBy(
@@ -1288,8 +1359,7 @@ function scrollLoop(timestamp) {
 
 
   /*
-     Проверяем,
-     не перешли ли мы
+     Проверяем переход
      на следующую песню.
   */
 
@@ -1299,8 +1369,7 @@ function scrollLoop(timestamp) {
 
 
   /*
-     Проверяем конец
-     всей программы.
+     Проверяем конец программы.
   */
 
   if (
@@ -1639,6 +1708,14 @@ function escapeHtml(value) {
 ========================================================= */
 
 
+/* THEME */
+
+themeToggle.addEventListener(
+  "click",
+  toggleTheme
+);
+
+
 /* ADD SONG */
 
 addSongButton.addEventListener(
@@ -1756,10 +1833,9 @@ document.addEventListener(
 
 
     /*
-       Когда пользователь пишет
-       в песню — стрелки должны
-       работать как обычные
-       стрелки внутри textarea.
+       Если пользователь печатает
+       песню — стрелки остаются
+       обычными стрелками.
     */
 
     if (
@@ -1830,6 +1906,8 @@ window.addEventListener(
 /* =========================================================
    INIT
 ========================================================= */
+
+applyTheme();
 
 loadSongs();
 

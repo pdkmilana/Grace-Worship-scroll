@@ -1,15 +1,32 @@
+/* =========================================================
+   WORSHIP SCROLL
+   LIGHT / DARK THEME
+========================================================= */
+
+
+/* =========================================================
+   LIGHT THEME — DEFAULT
+========================================================= */
+
 :root {
 
-  --accent: #198c83;
+  --accent: #4682B4;
 
-  --background: #101214;
-  --surface: #191c20;
-  --surface-hover: #24292e;
+  --background: #f7f8f7;
 
-  --text: #f5f5f5;
-  --muted: #92989e;
+  --surface: #ffffff;
 
-  --border: #30353a;
+  --surface-hover: #f0f2f1;
+
+  --text: #171a19;
+
+  --muted: #69716f;
+
+  --border: #dfe4e2;
+
+  --input-background: #ffffff;
+
+  --panel-background: rgba(247, 248, 247, 0.94);
 
   --font-size: 22px;
 
@@ -18,9 +35,34 @@
 }
 
 
-/* =========================
+/* =========================================================
+   DARK THEME
+========================================================= */
+
+body.dark-theme {
+
+  --background: #101214;
+
+  --surface: #191c20;
+
+  --surface-hover: #24292e;
+
+  --text: #f5f5f5;
+
+  --muted: #92989e;
+
+  --border: #30353a;
+
+  --input-background: #111315;
+
+  --panel-background: rgba(16, 18, 20, 0.96);
+
+}
+
+
+/* =========================================================
    BASE
-========================= */
+========================================================= */
 
 * {
   box-sizing: border-box;
@@ -36,9 +78,11 @@ body {
 
   margin: 0;
 
-  background: var(--background);
+  background:
+    var(--background);
 
-  color: var(--text);
+  color:
+    var(--text);
 
   font-family:
     Inter,
@@ -47,12 +91,16 @@ body {
     "Segoe UI",
     sans-serif;
 
+  transition:
+    background 0.25s ease,
+    color 0.25s ease;
+
 }
 
 
-/* =========================
+/* =========================================================
    CONTROL PANEL
-========================= */
+========================================================= */
 
 .control-panel {
 
@@ -65,17 +113,23 @@ body {
   z-index: 1000;
 
   background:
-    rgba(16, 18, 20, 0.96);
+    var(--panel-background);
 
-  backdrop-filter: blur(16px);
+  backdrop-filter:
+    blur(16px);
 
   border-bottom:
     1px solid var(--border);
 
-  padding: 14px 20px;
+  padding:
+    14px 20px;
 
   min-height:
     var(--panel-height);
+
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease;
 
 }
 
@@ -86,9 +140,11 @@ body {
 
   align-items: center;
 
-  justify-content: space-between;
+  justify-content:
+    space-between;
 
-  margin-bottom: 12px;
+  margin-bottom:
+    12px;
 
 }
 
@@ -99,29 +155,48 @@ body {
 
   align-items: baseline;
 
-  gap: 7px;
+  gap:
+    7px;
 
 }
 
 
 .brand-name {
 
-  font-weight: 800;
+  font-weight:
+    800;
 
-  letter-spacing: 2px;
+  letter-spacing:
+    2px;
 
 }
 
 
 .brand-subtitle {
 
-  color: var(--accent);
+  color:
+    var(--accent);
 
-  font-size: 12px;
+  font-size:
+    12px;
 
-  font-weight: 700;
+  font-weight:
+    700;
 
-  letter-spacing: 2px;
+  letter-spacing:
+    2px;
+
+}
+
+
+.top-right {
+
+  display: flex;
+
+  align-items: center;
+
+  gap:
+    12px;
 
 }
 
@@ -132,30 +207,101 @@ body {
 
   align-items: center;
 
-  gap: 8px;
+  gap:
+    8px;
 
-  color: var(--muted);
+  color:
+    var(--muted);
 
-  font-size: 13px;
+  font-size:
+    13px;
 
 }
 
 
 .status-dot {
 
-  width: 7px;
-  height: 7px;
+  width:
+    7px;
 
-  border-radius: 50%;
+  height:
+    7px;
 
-  background: var(--accent);
+  border-radius:
+    50%;
+
+  background:
+    var(--accent);
 
 }
 
 
-/* =========================
+/* =========================================================
+   THEME BUTTON
+========================================================= */
+
+.theme-toggle {
+
+  width:
+    38px;
+
+  height:
+    38px;
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  border:
+    1px solid var(--border);
+
+  border-radius:
+    9px;
+
+  background:
+    var(--surface);
+
+  color:
+    var(--text);
+
+  cursor:
+    pointer;
+
+  font-size:
+    17px;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.15s ease;
+
+}
+
+
+.theme-toggle:hover {
+
+  background:
+    var(--surface-hover);
+
+}
+
+
+.theme-toggle:active {
+
+  transform:
+    scale(0.94);
+
+}
+
+
+/* =========================================================
    CONTROLS
-========================= */
+========================================================= */
 
 .controls-row {
 
@@ -163,9 +309,11 @@ body {
 
   align-items: center;
 
-  gap: 12px;
+  gap:
+    12px;
 
-  flex-wrap: wrap;
+  flex-wrap:
+    wrap;
 
 }
 
@@ -176,7 +324,8 @@ body {
 
   align-items: center;
 
-  gap: 5px;
+  gap:
+    5px;
 
 }
 
@@ -218,80 +367,99 @@ body {
   background:
     var(--surface-hover);
 
-  border-color:
-    #454c52;
-
 }
 
 
 .small-button {
 
-  width: 34px;
-  height: 32px;
+  width:
+    34px;
 
-  border-radius: 7px;
+  height:
+    32px;
 
-  font-size: 15px;
+  border-radius:
+    7px;
+
+  font-size:
+    15px;
 
 }
 
 
 #fontSize {
 
-  min-width: 55px;
+  min-width:
+    55px;
 
-  text-align: center;
+  text-align:
+    center;
 
-  color: var(--muted);
+  color:
+    var(--muted);
 
-  font-size: 13px;
+  font-size:
+    13px;
 
 }
 
 
 #globalSpeed {
 
-  width: 55px;
-  height: 32px;
+  width:
+    55px;
 
-  border-radius: 7px;
+  height:
+    32px;
+
+  border-radius:
+    7px;
 
   border:
     1px solid var(--border);
 
   background:
-    var(--surface);
+    var(--input-background);
 
   color:
     var(--text);
 
-  text-align: center;
+  text-align:
+    center;
 
-  outline: none;
+  outline:
+    none;
 
 }
 
 
 .apply-button {
 
-  height: 32px;
+  height:
+    32px;
 
-  padding: 0 10px;
+  padding:
+    0 10px;
 
-  border-radius: 7px;
+  border-radius:
+    7px;
 
-  font-size: 12px;
+  font-size:
+    12px;
 
 }
 
 
 .primary-button {
 
-  height: 34px;
+  height:
+    34px;
 
-  padding: 0 14px;
+  padding:
+    0 14px;
 
-  border-radius: 8px;
+  border-radius:
+    8px;
 
   background:
     var(--accent);
@@ -302,44 +470,51 @@ body {
   color:
     white;
 
-  font-weight: 700;
+  font-weight:
+    700;
 
 }
 
 
 .primary-button:hover {
 
-  filter: brightness(1.1);
+  filter:
+    brightness(1.08);
 
 }
 
 
 .secondary-button {
 
-  height: 34px;
+  height:
+    34px;
 
-  padding: 0 12px;
+  padding:
+    0 12px;
 
-  border-radius: 8px;
+  border-radius:
+    8px;
 
 }
 
 
-/* =========================
+/* =========================================================
    MAIN
-========================= */
+========================================================= */
 
 main {
 
   padding-top:
-    calc(var(--panel-height) + 30px);
+    calc(
+      var(--panel-height) + 30px
+    );
 
 }
 
 
-/* =========================
+/* =========================================================
    EDITOR SECTION
-========================= */
+========================================================= */
 
 .editor-section {
 
@@ -357,7 +532,8 @@ main {
 
 .editor-header {
 
-  display: flex;
+  display:
+    flex;
 
   justify-content:
     space-between;
@@ -365,9 +541,11 @@ main {
   align-items:
     center;
 
-  gap: 20px;
+  gap:
+    20px;
 
-  margin-bottom: 20px;
+  margin-bottom:
+    20px;
 
 }
 
@@ -377,30 +555,36 @@ main {
   margin:
     0 0 5px;
 
-  font-size: 26px;
+  font-size:
+    26px;
 
 }
 
 
 .editor-header p {
 
-  margin: 0;
+  margin:
+    0;
 
   color:
     var(--muted);
 
-  font-size: 14px;
+  font-size:
+    14px;
 
 }
 
 
 .add-song-button {
 
-  display: flex;
+  display:
+    flex;
 
-  align-items: center;
+  align-items:
+    center;
 
-  gap: 7px;
+  gap:
+    7px;
 
   padding:
     11px 15px;
@@ -414,7 +598,11 @@ main {
   border-color:
     var(--accent);
 
-  font-weight: 700;
+  color:
+    white;
+
+  font-weight:
+    700;
 
 }
 
@@ -429,24 +617,29 @@ main {
 
 .plus-icon {
 
-  font-size: 20px;
+  font-size:
+    20px;
 
-  line-height: 1;
+  line-height:
+    1;
 
 }
 
 
-/* =========================
+/* =========================================================
    SONG EDITORS
-========================= */
+========================================================= */
 
 .song-editors {
 
-  display: flex;
+  display:
+    flex;
 
-  flex-direction: column;
+  flex-direction:
+    column;
 
-  gap: 12px;
+  gap:
+    12px;
 
 }
 
@@ -465,16 +658,23 @@ main {
   padding:
     16px;
 
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease;
+
 }
 
 
 .song-editor-top {
 
-  display: flex;
+  display:
+    flex;
 
-  align-items: center;
+  align-items:
+    center;
 
-  gap: 10px;
+  gap:
+    10px;
 
   margin-bottom:
     12px;
@@ -484,21 +684,34 @@ main {
 
 .song-number {
 
-  width: 34px;
-  height: 34px;
+  width:
+    34px;
 
-  display: flex;
+  height:
+    34px;
 
-  align-items: center;
-  justify-content: center;
+  display:
+    flex;
 
-  flex-shrink: 0;
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  flex-shrink:
+    0;
 
   border-radius:
     8px;
 
   background:
-    rgba(25, 140, 131, 0.15);
+    rgba(
+      25,
+      140,
+      131,
+      0.15
+    );
 
   color:
     var(--accent);
@@ -514,11 +727,14 @@ main {
 
 .song-title-input {
 
-  flex: 1;
+  flex:
+    1;
 
-  min-width: 0;
+  min-width:
+    0;
 
-  height: 38px;
+  height:
+    38px;
 
   padding:
     0 11px;
@@ -530,7 +746,7 @@ main {
     1px solid var(--border);
 
   background:
-    #111315;
+    var(--input-background);
 
   color:
     var(--text);
@@ -556,25 +772,29 @@ main {
 
 .delete-song-button {
 
-  width: 38px;
-  height: 38px;
+  width:
+    38px;
+
+  height:
+    38px;
 
   border-radius:
     7px;
 
   color:
-    #d77;
+    #c65d5d;
 
 }
 
 
-/* =========================
+/* =========================================================
    TEXTAREA
-========================= */
+========================================================= */
 
 .song-text-input {
 
-  width: 100%;
+  width:
+    100%;
 
   min-height:
     260px;
@@ -592,25 +812,13 @@ main {
     1px solid var(--border);
 
   background:
-    #111315;
+    var(--input-background);
 
   color:
     var(--text);
 
   outline:
     none;
-
-
-  /*
-     МОНОШИРИННЫЙ ШРИФТ
-
-     Один символ занимает
-     одинаковую ширину.
-
-     Поэтому расположение
-     аккордов пробелами
-     сохраняется.
-  */
 
   font-family:
     "Courier New",
@@ -619,51 +827,44 @@ main {
     Consolas,
     monospace;
 
-
   font-size:
     14px;
-
 
   line-height:
     1.6;
 
-
-  /*
-     НЕ УДАЛЯЕМ ПРОБЕЛЫ
-  */
-
   white-space:
     pre;
-
-
-  /*
-     Не переносим длинные строки.
-  */
 
   overflow-x:
     auto;
 
-
   tab-size:
     4;
+
+  -webkit-overflow-scrolling:
+    touch;
 
 }
 
 
-/* =========================
+/* =========================================================
    EDITOR BOTTOM
-========================= */
+========================================================= */
 
 .song-editor-bottom {
 
-  display: flex;
+  display:
+    flex;
 
-  align-items: center;
+  align-items:
+    center;
 
   justify-content:
     space-between;
 
-  gap: 15px;
+  gap:
+    15px;
 
   margin-top:
     12px;
@@ -684,13 +885,17 @@ main {
 
 .song-speed-editor {
 
-  display: flex;
+  display:
+    flex;
 
-  align-items: center;
+  align-items:
+    center;
 
-  gap: 5px;
+  gap:
+    5px;
 
-  flex-shrink: 0;
+  flex-shrink:
+    0;
 
 }
 
@@ -708,8 +913,11 @@ main {
 
 .song-speed-input {
 
-  width: 55px;
-  height: 30px;
+  width:
+    55px;
+
+  height:
+    30px;
 
   border-radius:
     7px;
@@ -718,7 +926,7 @@ main {
     1px solid var(--border);
 
   background:
-    #111315;
+    var(--input-background);
 
   color:
     var(--text);
@@ -732,9 +940,9 @@ main {
 }
 
 
-/* =========================
+/* =========================================================
    PROGRAM
-========================= */
+========================================================= */
 
 #program {
 
@@ -750,9 +958,9 @@ main {
 }
 
 
-/* =========================
+/* =========================================================
    SONG
-========================= */
+========================================================= */
 
 .song {
 
@@ -833,7 +1041,7 @@ main {
 
 
 /* =========================================================
-   ПЕСЕННЫЙ ТЕКСТ
+   LYRICS
 ========================================================= */
 
 .lyrics {
@@ -844,19 +1052,6 @@ main {
 }
 
 
-/*
-   ВАЖНО:
-
-   Используем PRE.
-
-   Это означает:
-
-   пробелы     → сохраняются
-   табы        → сохраняются
-   переносы    → сохраняются
-   пустые строки → сохраняются
-*/
-
 .lyrics-text {
 
   margin:
@@ -865,10 +1060,8 @@ main {
   padding:
     0;
 
-
   width:
     100%;
-
 
   font-family:
     "Courier New",
@@ -877,30 +1070,23 @@ main {
     Consolas,
     monospace;
 
-
   font-size:
     var(--font-size);
-
 
   line-height:
     1.65;
 
-
   color:
     var(--text);
-
 
   white-space:
     pre;
 
-
   overflow-x:
     auto;
 
-
   tab-size:
     4;
-
 
   -webkit-overflow-scrolling:
     touch;
@@ -919,9 +1105,9 @@ main {
 }
 
 
-/* =========================
+/* =========================================================
    FLOATING NAVIGATION
-========================= */
+========================================================= */
 
 .floating-navigation {
 
@@ -939,7 +1125,6 @@ main {
 
   z-index:
     1100;
-
 
   display:
     flex;
@@ -988,7 +1173,7 @@ main {
     8px;
 
   background:
-    rgba(25, 28, 32, 0.95);
+    var(--surface);
 
   border:
     1px solid var(--border);
@@ -1005,9 +1190,9 @@ main {
 }
 
 
-/* =========================
+/* =========================================================
    END SPACER
-========================= */
+========================================================= */
 
 .end-spacer {
 
@@ -1017,9 +1202,9 @@ main {
 }
 
 
-/* =========================
+/* =========================================================
    EMPTY STATE
-========================= */
+========================================================= */
 
 .empty-state {
 
@@ -1035,9 +1220,9 @@ main {
 }
 
 
-/* =========================
+/* =========================================================
    MOBILE
-========================= */
+========================================================= */
 
 @media (max-width: 700px) {
 

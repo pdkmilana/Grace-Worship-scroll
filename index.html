@@ -1,13 +1,23 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
   <title>Worship Scroll</title>
 
-  <link rel="stylesheet" href="style.css">
+  <link
+    rel="stylesheet"
+    href="style.css"
+  >
+
 </head>
+
 
 <body>
 
@@ -20,13 +30,42 @@
     <div class="top-row">
 
       <div class="brand">
-        <div class="brand-name">WORSHIP</div>
-        <div class="brand-subtitle">SCROLL</div>
+
+        <div class="brand-name">
+          GRACE WORSHIP
+        </div>
+
+        <div class="brand-subtitle">
+          SCROLL
+        </div>
+
       </div>
 
-      <div class="status-block">
-        <span id="status">Готово</span>
-        <span class="status-dot"></span>
+
+      <div class="top-right">
+
+        <div class="status-block">
+
+          <span id="status">
+            Готово
+          </span>
+
+          <span class="status-dot"></span>
+
+        </div>
+
+
+        <!-- THEME -->
+
+        <button
+          id="themeToggle"
+          class="theme-toggle"
+          title="Переключить тему"
+          aria-label="Переключить тему"
+        >
+          🌙
+        </button>
+
       </div>
 
     </div>
@@ -38,7 +77,10 @@
 
       <div class="control-group">
 
-        <button id="fontMinus" class="small-button">
+        <button
+          id="fontMinus"
+          class="small-button"
+        >
           A−
         </button>
 
@@ -46,7 +88,10 @@
           22 px
         </span>
 
-        <button id="fontPlus" class="small-button">
+        <button
+          id="fontPlus"
+          class="small-button"
+        >
           A+
         </button>
 
@@ -97,21 +142,21 @@
           id="playButton"
           class="primary-button"
         >
-          ▶ Play
+          ▶ Начать
         </button>
 
         <button
           id="pauseButton"
           class="secondary-button"
         >
-          ❚❚ Pause
+          ❚❚ Пауза
         </button>
 
         <button
           id="resetButton"
           class="secondary-button"
         >
-          ↺ Reset
+          ↺ Сначала
         </button>
 
       </div>
@@ -135,12 +180,14 @@
       ↑
     </button>
 
+
     <div
       id="songCounter"
       class="song-counter"
     >
       00 / 00
     </div>
+
 
     <button
       id="nextSong"
@@ -159,8 +206,9 @@
 
   <main>
 
+
     <!-- =========================
-         SONG EDITOR
+         EDITOR
     ========================== -->
 
     <section class="editor-section">
@@ -169,7 +217,9 @@
 
         <div>
 
-          <h1>Песни</h1>
+          <h1>
+            Песни
+          </h1>
 
           <p>
             Вставляйте текст с аккордами прямо из Word или Заметок
@@ -205,7 +255,7 @@
 
 
     <!-- =========================
-         SONG PROGRAM
+         PROGRAM
     ========================== -->
 
     <div id="program"></div>
